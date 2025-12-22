@@ -1,5 +1,53 @@
-<link rel="stylesheet" href="../Assets/css/style.css">
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="../Assets/css/student.css">
+</head>
+<body>
+
+<div class="navbar">
+    <h2>Student Dashboard</h2>
+    <div>
+        <a href="../auth/logout.php">Logout</a>
+    </div>
+</div>
 <div class="container" >
-    <h1>Student Dashboard</h1>
+    <nav>
+     <a href="goal_tracker.html">Goal Tracker</a>
+     <a href="assessment.html">Submit Assessment</a> 
+     <a href="performance.html">Performance</a>  
+    </nav>
 
 </div>
+<div class="container">
+
+    <div class="div-grid">
+        <div class="sd">
+            <h3>Average Score</h3>
+            <div class="bold">78%</div>
+        </div>
+
+        <div class="sd">
+            <h3>Assignments Submitted</h3>
+            <div class="bold">6 / 8</div>
+        </div>
+
+        <div class="sd">
+            <h3>Risk Status</h3>
+            <div class="bold" style="color:green">LOW</div>
+        </div>
+    </div>
+
+    <div class="sd" style="margin-top:30px;">
+        <h3>Performance Trend</h3>
+        <canvas id="performanceChart"></canvas>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../Assets/css/js/charts.js"></script>
+
+</body>
+</html>
