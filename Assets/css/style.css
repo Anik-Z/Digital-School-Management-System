@@ -1,0 +1,63 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background: #f4f6f8;
+  color: #333;
+}
+
+.container {
+  width: 90%;
+  max-width: 400px;
+  margin: 50px auto;
+  background: #fff;
+  padding: 25px;
+  border-radius: 6px;
+  
+}
+
+h1, h2 {
+  margin-bottom: 15px;
+  color: #2c3e50;
+  text-align: center;
+
+}
+
+nav a {
+  margin-right: 15px;
+  text-decoration: none;
+  color: #2980b9;
+  font-weight: bold;
+}
+
+input, select, textarea, button {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+button {
+  background: #2980b9;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1f6391;
+}
+
+.card {
+  background: #ecf0f1;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 5px;
+}
+
+.status-green { color: green; }
+.status-yellow { color: orange; }
+.status-red { color: red; }
