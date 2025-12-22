@@ -1,6 +1,6 @@
-const ctx = document.getElementById('performanceChart');
+const chrt= document.getElementById('performanceChart');
 
-new Chart(ctx, {
+new Chart(chrt, {
     type: 'line',
     data: {
         labels: ['Quiz 1', 'Mid', 'Quiz 2', 'Final'],
@@ -8,7 +8,7 @@ new Chart(ctx, {
             label: 'Marks',
             data: [65, 72, 75, 80],
             borderWidth: 2,
-            tension: 0.3
+            tension: 0.4
         }]
     },
     options: {
