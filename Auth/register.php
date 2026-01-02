@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up | Digital School Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="signup.css">
+</head>
+<body>
+
+<div class="signup-container">
+    <div class="signup-card">
+        <h2>Create Your Account</h2>
+        <p class="subtitle">Join the Digital School Management System</p>
+
+        <form method="post">
+
+          
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+
+         
+            <div class="role-box">
+                <label class="role-title">Register As</label>
+                <div class="role-options">
+                    <label>
+                        <input type="radio" name="role" value="student" onclick="toggleFields()" required>
+                        Student
+                    </label>
+                    <label>
+                        <input type="radio" name="role" value="teacher" onclick="toggleFields()" required>
+                        Teacher
+                    </label>
+                </div>
+            </div>
+
+           
+            <div id="student-fields" class="extra-fields">
+                <div class="form-group">
+                    <label>Class</label>
+                    <input type="text" name="class">
+                </div>
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="text" name="roll">
+                </div>
+            </div>
+
+            <!-- Teacher Fields -->
+            <div id="teacher-fields" class="extra-fields">
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department">
+                </div>
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" name="subject">
+                </div>
+            </div>
+
+            <button type="submit" class="btn">Create Account</button>
+
+            <p class="login-link">
+                Already have an account?
+                <a href="login.php">Login</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+
+</body>
+</html>
