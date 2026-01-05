@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Sign Up | Digital School Management System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="signup.css">
+    <link rel="stylesheet" href="../Assets/css/signup.css">
 </head>
 <body>
 
@@ -58,7 +58,7 @@
                 </div>
             </div>
 
-            <!-- Teacher Fields -->
+         
             <div id="teacher-fields" class="extra-fields">
                 <div class="form-group">
                     <label>Department</label>
@@ -74,12 +74,30 @@
 
             <p class="login-link">
                 Already have an account?
-                <a href="login.php">Login</a>
+                <a href="login.html">Login</a>
             </p>
         </form>
     </div>
 </div>
 
+<script>
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const studentFields = document.getElementById('student-fields');
+    const teacherFields = document.getElementById('teacher-fields');
 
+    roleRadios.forEach(radio => {
+        radio.addEventListener('change', function () {
+            studentFields.style.display = 'none';
+            teacherFields.style.display = 'none';
+
+            if (this.value === 'student') {
+                studentFields.style.display = 'block';
+            } 
+            else if (this.value === 'teacher') {
+                teacherFields.style.display = 'block';
+            }
+        });
+    });
+</script>
 </body>
 </html>
