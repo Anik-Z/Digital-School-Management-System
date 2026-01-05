@@ -10,12 +10,16 @@ body {
     color: #1f2a44;
     line-height: 1.6;
 }
-
+.logo-img {
+    height: 40px;
+    margin-right: 15px;
+    vertical-align: middle;
+}
 .nav {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 22px 8%;
+    padding: 20px 8%;
     background: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(10px);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
@@ -198,7 +202,7 @@ body {
 }
 
 footer {
-    padding: 60px 20px;
+    padding: 60px 20px 40px;
     background-color: #0f172a;
     color: #f8fafc;
     text-align: center;
@@ -210,12 +214,14 @@ footer {
     justify-content: space-between;
     align-items: stretch;
     max-width: 1200px;
-    margin: 40px auto 0;
+    margin: 0 auto 40px;
     gap: 60px;
 }
 
 .footer-section {
     flex: 1;
+    min-width: 300px;
+    text-align: left;
 }
 
 .footer-section:first-child {
