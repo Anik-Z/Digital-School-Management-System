@@ -31,6 +31,27 @@
                 <input type="password" name="password" required>
             </div>
 
+            <div class="form-group">
+              <label for="securityQuestion">Security Question</label>
+              <select id="securityQuestion" name="securityQuestion" required>
+                <option value="">-- Choose Question --</option>
+                <option value="pet">What is your pet Name?</option>
+                <option value="singer">Who is your Favourite Singer?</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="securityAnswer">Type your Answer</label>
+              <input
+                type="text"
+                id="securityAnswer"
+                name="answer"
+                placeholder="Ex: Dog, Atif Aslam"
+                required
+              />
+              <small class="form-hint">Enter the answer to your security question</small>
+            </div>
+
          
             <div class="role-box">
                 <label class="role-title">Register As</label>
