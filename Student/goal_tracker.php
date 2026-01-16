@@ -106,7 +106,7 @@ if ($result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goal Tracker</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="Assets/css/common.css">
+    <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
 
@@ -126,7 +126,7 @@ if ($result) {
         <nav class="sidebar-nav">
             <ul>
                 <li>
-                    <a href="index.php">
+                    <a href="dashboard.php">
                         <span class="nav-icon">📊</span>
                         <span>Dashboard</span>
                     </a>

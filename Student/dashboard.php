@@ -30,7 +30,7 @@ $activities = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard - <?php echo $student['name']; ?></title>
-    <link rel="stylesheet" href="Assets/css/common.css">
+    <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
     <div class="dashboard-layout">
@@ -51,10 +51,11 @@ $activities = [
             <nav class="sidebar-nav">
                 <ul>
                     <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
-                    <li><a href="#"><i>📈</i> Performance</a></li>
-                    <li><a href="#"><i>🎯</i> Goals</a></li>
-                    <li><a href="#"><i>🔔</i>Notice</a></li>
-                    <li><a href="#"><i>🚪</i> Logout</a></li>
+                    <li><a href="performance.php"><i>📈</i> Performance</a></li>
+                    <li><a href="goal_tracker.php"><i>🎯</i> Goals</a></li>
+                    <li><a href="assessment.php"><i>📝</i>Assessment</a></li>
+                    <li><a href="notices.php"><i>🔔</i>Notice</a></li>
+                    <li><a href="login.php"><i>🚪</i> Logout</a></li>
                 </ul>
             </nav>
             

@@ -28,3 +28,28 @@ VALUES
 INSERT INTO users (full_name, email, password, role, department, subject, security_question, security_answer) 
 VALUES 
 ('Jane Teacher', 'teacher@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'teacher', 'Mathematics', 'Algebra', 'singer', 'Adele');
+/*creating table for goal_tracker*/
+CREATE TABLE goals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    deadline DATE NOT NULL,
+    progress INT DEFAULT 0,
+    status VARCHAR(50) DEFAULT 'In Progress',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+/*creating table for performance*/
+CREATE TABLE performance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    subject VARCHAR(100) NOT NULL,
+    assignment_name VARCHAR(255) NOT NULL,
+    score INT NOT NULL,
+    max_score INT NOT NULL,
+    percentage DECIMAL(5,2) NOT NULL,
+    date DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
