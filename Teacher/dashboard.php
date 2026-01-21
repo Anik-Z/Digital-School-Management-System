@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Database connection
+
 $host = 'localhost';
 $dbname = 'student_db';
 $username = 'root';
@@ -13,12 +13,11 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Assume teacher_id from session
+
 $teacher_id = isset($_SESSION['teacher_id']) ? $_SESSION['teacher_id'] : 1;
 $teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : 'Teacher';
 
-// Fetch statistics
-// Total Students
+
 $students_sql = "SELECT COUNT(*) as total FROM students";
 $students_result = mysqli_query($conn, $students_sql);
 $total_students = 0;
@@ -27,7 +26,7 @@ if ($students_result) {
     $total_students = $students_row['total'];
 }
 
-// Total Assessments
+
 $assessments_sql = "SELECT COUNT(*) as total FROM assessments WHERE created_by = '$teacher_id'";
 $assessments_result = mysqli_query($conn, $assessments_sql);
 $total_assessments = 0;
@@ -36,7 +35,7 @@ if ($assessments_result) {
     $total_assessments = $assessments_row['total'];
 }
 
-// Pending Submissions
+
 $pending_sql = "SELECT COUNT(*) as pending FROM assessment_submissions s
                 INNER JOIN assessments a ON s.assessment_id = a.id
                 WHERE a.created_by = '$teacher_id' AND s.status = 'Submitted'";
@@ -47,7 +46,7 @@ if ($pending_result) {
     $pending_submissions = $pending_row['pending'];
 }
 
-// At-Risk Students
+
 $risk_sql = "SELECT COUNT(*) as at_risk FROM students WHERE risk_status IN ('Yellow', 'Red')";
 $risk_result = mysqli_query($conn, $risk_sql);
 $at_risk_students = 0;
@@ -56,7 +55,7 @@ if ($risk_result) {
     $at_risk_students = $risk_row['at_risk'];
 }
 
-// Recent Assessments
+
 $recent_assessments_sql = "SELECT a.*, COUNT(s.id) as submission_count
                            FROM assessments a
                            LEFT JOIN assessment_submissions s ON a.id = s.assessment_id
@@ -72,7 +71,7 @@ if ($recent_assessments_result) {
     }
 }
 
-// At-Risk Students List
+
 $risk_students_sql = "SELECT s.*, 
                       (SELECT AVG(percentage) FROM performance WHERE student_id = s.id) as avg_performance,
                       (SELECT COUNT(*) FROM assessment_submissions sub 
@@ -94,7 +93,7 @@ if ($risk_students_result) {
     }
 }
 
-// Recent Interventions
+
 $interventions_sql = "SELECT i.*, s.name as student_name, s.risk_status
                       FROM interventions i
                       INNER JOIN students s ON i.student_id = s.id
@@ -109,7 +108,7 @@ if ($interventions_result) {
     }
 }
 
-// Class Average Performance
+
 $class_avg_sql = "SELECT AVG(percentage) as class_avg FROM performance";
 $class_avg_result = mysqli_query($conn, $class_avg_sql);
 $class_average = 0;
@@ -130,7 +129,7 @@ if ($class_avg_result) {
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
+   
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
@@ -181,7 +180,7 @@ if ($class_avg_result) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+  
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">📊 Teacher Dashboard</h1>
@@ -189,7 +188,7 @@ if ($class_avg_result) {
         </div>
 
         <div class="container">
-            <!-- Statistics Cards -->
+           
             <div class="overview-cards">
                 <div class="overview-card">
                     <div class="card-icon">👥</div>
@@ -227,7 +226,7 @@ if ($class_avg_result) {
                 </div>
             </div>
 
-            <!-- Quick Actions -->
+            
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-header">
                     <h2 class="card-title">Quick Actions</h2>
@@ -251,9 +250,9 @@ if ($class_avg_result) {
                 </div>
             </div>
 
-            <!-- Recent Assessments & At-Risk Students -->
+            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
-                <!-- Recent Assessments -->
+               
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">Recent Assessments</h2>
@@ -283,7 +282,7 @@ if ($class_avg_result) {
                     <?php endif; ?>
                 </div>
 
-                <!-- At-Risk Students -->
+               
                 <div class="card">
                     <div class="card-header">
                         <h2 class="card-title">At-Risk Students</h2>
@@ -314,7 +313,7 @@ if ($class_avg_result) {
                 </div>
             </div>
 
-            <!-- Recent Interventions -->
+            
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">Recent Interventions</h2>

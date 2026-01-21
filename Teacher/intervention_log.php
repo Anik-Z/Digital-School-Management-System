@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Database connection
+
 $host = 'localhost';
 $dbname = 'student_db';
 $username = 'root';
@@ -19,7 +19,7 @@ $teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : '
 $success_message = '';
 $error_message = '';
 
-// CREATE - Add intervention
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_intervention'])) {
     $student_id = (int)$_POST['student_id'];
     $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_intervention']
     }
 }
 
-// UPDATE - Edit intervention
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_intervention'])) {
     $intervention_id = (int)$_POST['intervention_id'];
     $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_intervention']))
     }
 }
 
-// DELETE - Delete intervention
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $intervention_id = (int)$_GET['delete'];
     $sql = "DELETE FROM interventions WHERE id = '$intervention_id' AND teacher_id = '$teacher_id'";
@@ -76,7 +76,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
-// Fetch all students for dropdown
+
 $students_sql = "SELECT id, name, risk_status FROM students ORDER BY name ASC";
 $students_result = mysqli_query($conn, $students_sql);
 $students = array();
@@ -86,7 +86,6 @@ if ($students_result) {
     }
 }
 
-// Fetch interventions with student info
 $filter_student = isset($_GET['student_id']) ? (int)$_GET['student_id'] : 0;
 $filter_status = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET['status']) : '';
 
@@ -111,7 +110,7 @@ if ($interventions_result) {
     }
 }
 
-// Statistics
+
 $total_interventions = count($interventions);
 $pending_count = 0;
 $in_progress_count = 0;
@@ -143,7 +142,7 @@ foreach ($interventions as $intervention) {
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
+    
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
@@ -194,7 +193,7 @@ foreach ($interventions as $intervention) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+   
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">📋 Intervention Log</h1>
@@ -210,7 +209,7 @@ foreach ($interventions as $intervention) {
                 <div class="alert alert-error"><?php echo $error_message; ?></div>
             <?php endif; ?>
 
-            <!-- Statistics Cards -->
+           
             <div class="overview-cards">
                 <div class="overview-card">
                     <div class="card-icon">📋</div>
@@ -240,7 +239,7 @@ foreach ($interventions as $intervention) {
                 </div>
             </div>
 
-            <!-- Action Buttons & Filters -->
+            
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
                 <button class="add-goal-btn" onclick="toggleForm()">
                     ➕ Log New Intervention
@@ -265,7 +264,7 @@ foreach ($interventions as $intervention) {
                 </div>
             </div>
 
-            <!-- Create Intervention Form -->
+           
             <div class="goal-form hidden" id="interventionForm">
                 <h3>Log New Intervention</h3>
                 <form method="POST" action="">
@@ -334,7 +333,7 @@ foreach ($interventions as $intervention) {
                 </form>
             </div>
 
-            <!-- Interventions List -->
+            
             <?php if (empty($interventions)): ?>
                 <div class="no-goals">
                     <h3>📋 No Interventions Logged Yet</h3>
@@ -416,7 +415,7 @@ foreach ($interventions as $intervention) {
     </main>
 </div>
 
-<!-- Edit Modal -->
+
 <div id="editModal" class="modal">
     <div class="modal-content">
         <button class="close-modal" onclick="closeEditModal()">&times;</button>

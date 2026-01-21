@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Database connection
+
 $host = 'localhost';
 $dbname = 'student_db';
 $username = 'root';
@@ -13,14 +13,14 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Assume teacher_id from session
+
 $teacher_id = isset($_SESSION['teacher_id']) ? $_SESSION['teacher_id'] : 1;
 $teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : 'Teacher';
 
 $success_message = '';
 $error_message = '';
 
-// CREATE - Add new assessment
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment'])) {
     $title = mysqli_real_escape_string($conn, trim($_POST['title']));
     $description = mysqli_real_escape_string($conn, trim($_POST['description']));
@@ -33,11 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']))
     
     if (!empty($title) && !empty($description) && !empty($subject) && $total_marks > 0) {
         if ($assign_to === 'all') {
-            // Assign to all students
+          
             $sql = "INSERT INTO assessments (title, description, subject, type, total_marks, duration, due_date, assigned_to_all, created_by) 
                     VALUES ('$title', '$description', '$subject', '$type', '$total_marks', " . ($duration ? "'$duration'" : "NULL") . ", '$due_date', 1, '$teacher_id')";
         } else {
-            // Assign to specific student
+           
             $student_id = (int)$assign_to;
             $sql = "INSERT INTO assessments (title, description, subject, type, total_marks, duration, due_date, assigned_to_student, assigned_to_all, created_by) 
                     VALUES ('$title', '$description', '$subject', '$type', '$total_marks', " . ($duration ? "'$duration'" : "NULL") . ", '$due_date', '$student_id', 0, '$teacher_id')";
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment']))
     }
 }
 
-// UPDATE - Edit assessment
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_assessment'])) {
     $assessment_id = (int)$_POST['assessment_id'];
     $title = mysqli_real_escape_string($conn, trim($_POST['title']));
@@ -79,15 +79,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_assessment'])) {
     }
 }
 
-// DELETE - Delete assessment
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $assessment_id = (int)$_GET['delete'];
     
-    // Delete submissions first
+    
     $delete_submissions = "DELETE FROM assessment_submissions WHERE assessment_id = '$assessment_id'";
     mysqli_query($conn, $delete_submissions);
     
-    // Delete assessment
+    
     $sql = "DELETE FROM assessments WHERE id = '$assessment_id' AND created_by = '$teacher_id'";
     
     if (mysqli_query($conn, $sql)) {
@@ -99,7 +99,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
-// GRADE - Grade student submission
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grade_submission'])) {
     $submission_id = (int)$_POST['submission_id'];
     $obtained_marks = (int)$_POST['obtained_marks'];
@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grade_submission'])) 
     }
 }
 
-// READ - Fetch all assessments created by this teacher
+
 $sql = "SELECT a.*, 
         COUNT(DISTINCT s.id) as submission_count
         FROM assessments a
@@ -135,7 +135,7 @@ if ($result) {
     }
 }
 
-// Fetch all students for assignment dropdown
+
 $students_sql = "SELECT id, name, email FROM students ORDER BY name ASC";
 $students_result = mysqli_query($conn, $students_sql);
 $students = array();
@@ -146,7 +146,7 @@ if ($students_result) {
     }
 }
 
-// Statistics
+
 $total_assessments = count($assessments);
 $total_submissions = 0;
 $pending_grading = 0;
@@ -186,7 +186,7 @@ if ($graded_result) {
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
+    
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
@@ -243,7 +243,7 @@ if ($graded_result) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">📝 Assessment Management</h1>
@@ -259,7 +259,7 @@ if ($graded_result) {
                 <div class="alert alert-error"><?php echo $error_message; ?></div>
             <?php endif; ?>
 
-            <!-- Statistics Cards -->
+            
             <div class="overview-cards">
                 <div class="overview-card">
                     <div class="card-icon">📋</div>
@@ -290,12 +290,12 @@ if ($graded_result) {
                 </div>
             </div>
 
-            <!-- Create Assessment Button -->
+            
             <button class="add-goal-btn" onclick="toggleForm()" style="margin-bottom: 2rem;">
                 ➕ Create New Assessment
             </button>
 
-            <!-- Create Assessment Form -->
+            
             <div class="goal-form hidden" id="assessmentForm">
                 <h3>Create New Assessment</h3>
                 <form method="POST" action="">
@@ -370,7 +370,7 @@ if ($graded_result) {
                 </form>
             </div>
 
-            <!-- Assessments Table View -->
+        
             <div class="card" style="margin-bottom: 2rem;">
                 <div class="card-header">
                     <h2 class="card-title">All Assessments</h2>
@@ -454,7 +454,7 @@ if ($graded_result) {
                 </div>
             </div>
 
-            <!-- Assessments Grid -->
+            
             <?php if (empty($assessments)): ?>
                 <div class="no-goals" id="cardView">
                     <h3>📝 No Assessments Created Yet!</h3>
@@ -464,14 +464,14 @@ if ($graded_result) {
                 <div class="goals-grid" id="cardView">
                     <?php foreach ($assessments as $assessment): ?>
                         <?php
-                            // Get expected student count
+                            
                             if ($assessment['assigned_to_all'] == 1) {
                                 $expected_count = count($students);
                                 $assigned_to_text = 'All Students';
                                 $assigned_badge = 'badge-success';
                             } else {
                                 $expected_count = 1;
-                                // Get student name
+                                
                                 $student_name_sql = "SELECT name FROM students WHERE id = " . $assessment['assigned_to_student'];
                                 $student_name_result = mysqli_query($conn, $student_name_sql);
                                 if ($student_name_result && mysqli_num_rows($student_name_result) > 0) {
@@ -546,7 +546,7 @@ if ($graded_result) {
     </main>
 </div>
 
-<!-- Edit Modal -->
+
 <div id="editModal" class="modal">
     <div class="modal-content">
         <button class="close-modal" onclick="closeEditModal()">&times;</button>
@@ -610,7 +610,7 @@ if ($graded_result) {
     </div>
 </div>
 
-<!-- Submissions Modal -->
+
 <div id="submissionsModal" class="modal">
     <div class="modal-content" style="max-width: 900px; max-height: 85vh; overflow-y: auto;">
         <button class="close-modal" onclick="closeSubmissionsModal()">&times;</button>
@@ -648,7 +648,7 @@ if ($graded_result) {
         document.getElementById('submissionsModal').style.display = 'block';
         document.getElementById('submissionsTitle').textContent = 'Submissions: ' + title;
         
-        // Fetch submissions via AJAX
+        
         fetch('get_submissions.php?assessment_id=' + assessmentId)
             .then(response => response.text())
             .then(html => {
@@ -681,12 +681,12 @@ if ($graded_result) {
         const toggleText = document.getElementById('viewToggleText');
         
         if (cardView.classList.contains('hidden')) {
-            // Show card view, hide table view
+            
             cardView.classList.remove('hidden');
             tableView.classList.add('hidden');
             toggleText.textContent = '📋 Table View';
         } else {
-            // Show table view, hide card view
+        
             cardView.classList.add('hidden');
             tableView.classList.remove('hidden');
             toggleText.textContent = '🎴 Card View';
