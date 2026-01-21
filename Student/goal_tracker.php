@@ -1,9 +1,8 @@
 <?php
 session_start();
 
-// Database connection
 $host = 'localhost';
-$dbname = 'student_db';
+$dbname = 'digital_school_management_system';
 $username = 'root';
 $password = '';
 
@@ -13,13 +12,13 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Assume student_id from session
+
 $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
 
 $success_message = '';
 $error_message = '';
 
-// CREATE - Add new goal
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
     $title = mysqli_real_escape_string($conn, trim($_POST['title']));
     $description = mysqli_real_escape_string($conn, trim($_POST['description']));
@@ -39,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
     }
 }
 
-// UPDATE - Update goal progress
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_goal'])) {
     $goal_id = (int)$_POST['goal_id'];
     $progress = (int)$_POST['progress'];
@@ -55,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_goal'])) {
     }
 }
 
-// UPDATE - Edit goal
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
     $goal_id = (int)$_POST['goal_id'];
     $title = mysqli_real_escape_string($conn, trim($_POST['title']));
@@ -74,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
     }
 }
 
-// DELETE - Delete goal
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $goal_id = (int)$_GET['delete'];
     $sql = "DELETE FROM goals WHERE id = '$goal_id' AND student_id = '$student_id'";
@@ -88,7 +87,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     }
 }
 
-// READ - Fetch all goals
+
 $sql = "SELECT * FROM goals WHERE student_id = '$student_id' ORDER BY deadline ASC";
 $result = mysqli_query($conn, $sql);
 $goals = array();
@@ -111,7 +110,7 @@ if ($result) {
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
+
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
@@ -166,7 +165,7 @@ if ($result) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+    
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">🎯 Goal Tracker</h1>
@@ -263,7 +262,7 @@ if ($result) {
     </main>
 </div>
 
-<!-- Edit Modal -->
+
 <div id="editModal" class="modal">
     <div class="modal-content">
         <button class="close-modal" onclick="closeEditModal()">&times;</button>
@@ -315,7 +314,6 @@ if ($result) {
         }
     }
 
-    // Update progress display when slider moves
     document.querySelectorAll('.progress-input').forEach(function(slider) {
         slider.addEventListener('input', function() {
             this.nextElementSibling.textContent = this.value + '%';
@@ -326,6 +324,6 @@ if ($result) {
 </body>
 </html>
 <?php
-// Close database connection
+
 mysqli_close($conn);
 ?>

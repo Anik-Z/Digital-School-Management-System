@@ -1,136 +1,197 @@
 <?php
+session_start();
 
-$student = [
-    "name" => "MD Ashikuzzaman",
-    "major" => "Computer Science",
-    "semester" => "Fall 2025",
-    "gpa" => 3.75,
-    "gpa_trend" => "+0.15",
-    "attendance" => "94%",
-    "assignments_done" => 18,
-    "assignments_total" => 22,
-    "overdue" => 2
-];
-$courses = [
-    ["id" => 1, "title" => "Algorithm Design", "progress" => 85, "grade" => "A", "modules" => 12],
-    ["id" => 2, "title" => "Data Structures", "progress" => 70, "grade" => "B+", "modules" => 10],
-    ["id" => 3, "title" => "Web Development", "progress" => 95, "grade" => "A+", "modules" => 15]
-];
+$conn = mysqli_connect("localhost", "root", "", "digital_school_management_system");
+if (!$conn) {
+    die("Database connection failed");
+}
 
 
-$activities = [
-    ["date" => "Nov 15, 2024", "activity" => "Algorithm Design Submission", "course" => "CS 101", "status" => "Graded", "badge" => "success"],
-    ["date" => "Nov 14, 2024", "activity" => "Calculus Quiz Attempted", "course" => "Math 202", "status" => "Pending", "badge" => "warning"],
-    ["date" => "Nov 12, 2024", "activity" => "Physics Lab Report Uploaded", "course" => "Physics 150", "status" => "Graded", "badge" => "success"]
-];
+if (!isset($_SESSION['email'])) {
+    header("Location: login.php");
+    exit;
+}
+
+$email = $_SESSION['email'];
+
+
+$sqlStudent = "
+SELECT 
+    u.full_name, u.email, u.class, u.roll_number,
+    s.id AS student_id, s.risk_status
+FROM users u
+JOIN students s ON u.email = s.email
+WHERE u.email = '$email' AND u.role = 'student'
+";
+$resStudent = mysqli_query($conn, $sqlStudent);
+$student = mysqli_fetch_assoc($resStudent);
+
+$student_id = $student['student_id'];
+
+$sqlGpa = "
+SELECT ROUND(AVG(percentage)/25,2) AS gpa 
+FROM performance 
+WHERE student_id = $student_id
+";
+$gpa = mysqli_fetch_assoc(mysqli_query($conn, $sqlGpa))['gpa'] ?? 0;
+
+
+$sqlCourses = "
+SELECT DISTINCT subject 
+FROM assessments 
+WHERE assigned_to_all = 1 
+   OR assigned_to_student = $student_id
+";
+$courses = mysqli_query($conn, $sqlCourses);
+
+
+$sqlProgress = "
+SELECT subject, COUNT(*) total, AVG(percentage) avg_score
+FROM performance
+WHERE student_id = $student_id
+GROUP BY subject
+";
+$progress = mysqli_query($conn, $sqlProgress);
+
+
+$sqlActivities = "
+SELECT date, activity, status FROM (
+    SELECT 
+        submission_date AS date,
+        CONCAT('Submitted Assessment #', assessment_id) AS activity,
+        status
+    FROM assessment_submissions
+    WHERE student_id = $student_id
+
+    UNION ALL
+
+    SELECT 
+        date,
+        assignment_name,
+        CONCAT(score,'/',max_score)
+    FROM performance
+    WHERE student_id = $student_id
+) AS acts
+ORDER BY date DESC
+LIMIT 10
+";
+$activities = mysqli_query($conn, $sqlActivities);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard - <?php echo $student['name']; ?></title>
-    <link rel="stylesheet" href="../Assets/css/common.css">
+<meta charset="UTF-8">
+<title>Student Dashboard</title>
+<link rel="stylesheet" href="../Assets/css/common.css">
 </head>
+
 <body>
-    <div class="dashboard-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>STUDENT!</h2>
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <?php echo substr($student['name'], 0, 1) . substr(explode(' ', $student['name'])[1], 0, 1); ?>
+
+<div class="dashboard-layout">
+
+    
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="user-avatar">
+                <?= strtoupper(substr($student['full_name'],0,1)) ?>
+            </div>
+            <div class="user-details">
+                <h4><?= htmlspecialchars($student['full_name']) ?></h4>
+                <p><?= htmlspecialchars($student['class']) ?></p>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a class="active">📊 Dashboard</a></li>
+                <li><a href="goal_tracker.php">🎯 Goals</a></li>
+                <li><a href="assessment.php">📝 Assessments</a></li>
+                <li><a href="logout.php">🚪 Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <p>Risk Status: <strong><?= $student['risk_status'] ?></strong></p>
+        </div>
+    </aside>
+
+    
+    <main class="main-content">
+
+        <h1 class="page-title">
+            Welcome, <?= explode(" ",$student['full_name'])[0] ?>
+        </h1>
+
+        
+        <section class="overview-cards">
+
+            <div class="overview-card">
+                <div class="card-value"><?= $gpa ?></div>
+                <div class="card-label">GPA</div>
+            </div>
+
+            <div class="overview-card">
+                <div class="card-value"><?= $student['class'] ?></div>
+                <div class="card-label">Class</div>
+            </div>
+
+            <div class="overview-card">
+                <div class="card-value"><?= $student['roll_number'] ?></div>
+                <div class="card-label">Roll No</div>
+            </div>
+
+        </section>
+
+        <section class="card">
+            <h3>Assigned Courses</h3>
+            <ul>
+                <?php while($c = mysqli_fetch_assoc($courses)): ?>
+                    <li><?= htmlspecialchars($c['subject']) ?></li>
+                <?php endwhile; ?>
+            </ul>
+        </section>
+
+      
+        <section class="progress-summary">
+            <h3>Course Progress</h3>
+
+            <?php while($p = mysqli_fetch_assoc($progress)): ?>
+                <div class="progress-item">
+                    <strong><?= $p['subject'] ?></strong>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: <?= $p['avg_score'] ?>%"></div>
                     </div>
-                    <div class="user-details">
-                        <h4><?php echo $student['name']; ?></h4>
-                        <p><?php echo $student['major']; ?></p>
-                    </div>
+                    <small>Average: <?= round($p['avg_score'],1) ?>%</small>
                 </div>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <ul>
-                    <li><a href="#" class="active"><i>📊</i> Dashboard</a></li>
-                    <li><a href="performance.php"><i>📈</i> Performance</a></li>
-                    <li><a href="goal_tracker.php"><i>🎯</i> Goals</a></li>
-                    <li><a href="assessment.php"><i>📝</i>Assessment</a></li>
-                    <li><a href="notices.php"><i>🔔</i>Notice</a></li>
-                    <li><a href="login.php"><i>🚪</i> Logout</a></li>
-                </ul>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <p>Term: <?php echo $student['semester']; ?><br>GPA: <?php echo $student['gpa']; ?></p>
-            </div>
-        </aside>
+            <?php endwhile; ?>
+        </section>
 
-        <main class="main-content">
-            <header class="content-header">
-                <h1 class="page-title">Welcome back, <?php echo explode(' ', $student['name'])[0]; ?></h1>
-            </header>
+        <section class="card">
+            <h3>Recent Activities</h3>
 
-            <div class="content-body">
-                <section class="overview-cards">
-                    <div class="overview-card">
-                        <div class="card-value"><?php echo $student['gpa']; ?></div>
-                        <div class="card-label">Current GPA</div>
-                        <div class="card-trend trend-up"><?php echo $student['gpa_trend']; ?></div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-value"><?php echo $student['attendance']; ?></div>
-                        <div class="card-label">Attendance</div>
-                    </div>
-                    <div class="overview-card">
-                        <div class="card-value"><?php echo $student['assignments_done'] . "/" . $student['assignments_total']; ?></div>
-                        <div class="card-label">Assignments</div>
-                    </div>
-                </section>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Activity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php while($a = mysqli_fetch_assoc($activities)): ?>
+                    <tr>
+                        <td><?= $a['date'] ?></td>
+                        <td><?= htmlspecialchars($a['activity']) ?></td>
+                        <td><?= $a['status'] ?></td>
+                    </tr>
+                <?php endwhile; ?>
+                </tbody>
+            </table>
+        </section>
 
-                <section class="progress-summary">
-                    <h2 class="section-title">Course Progress</h2>
-                    <div class="progress-grid">
-                        <?php foreach ($courses as $course): ?>
-                        <div class="progress-item">
-                            <div class="progress-header">
-                                <strong><?php echo htmlspecialchars($course['title']); ?></strong>
-                                <span><?php echo $course['progress']; ?>%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: <?php echo $course['progress']; ?>%;"></div>
-                            </div>
-                            <div style="display:flex; justify-content: space-between; align-items: center; margin-top: 10px;">
-                                <small>Grade: <?php echo $course['grade']; ?> | <?php echo $course['modules']; ?> modules</small>
-                            </div>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
+    </main>
+</div>
 
-                <section class="card">
-                    <h3>Recent Activity</h3>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Activity</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($activities as $act): ?>
-                                <tr>
-                                    <td><?php echo $act['date']; ?></td>
-                                    <td><?php echo $act['activity']; ?></td>
-                                    <td><span class="badge badge-<?php echo $act['badge']; ?>"><?php echo $act['status']; ?></span></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            </div>
-        </main>
-    </div>
 </body>
 </html>

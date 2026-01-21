@@ -1,9 +1,9 @@
 <?php
 session_start();
 
-// Database connection
+
 $host = 'localhost';
-$dbname = 'student_db';
+$dbname = 'digital_school_management_system';
 $username = 'root';
 $password = '';
 
@@ -13,13 +13,12 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-// Assume student_id from session
+
 $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
 
 $success_message = '';
 $error_message = '';
 
-// SUBMIT - Submit assessment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment'])) {
     $assessment_id = (int)$_POST['assessment_id'];
     $answer_text = mysqli_real_escape_string($conn, trim($_POST['answer_text']));
@@ -44,19 +43,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment']))
     }
     
     if (!empty($answer_text) || $file_path) {
-        // Check if already submitted
+        
         $check_sql = "SELECT id FROM assessment_submissions 
                       WHERE assessment_id = '$assessment_id' AND student_id = '$student_id'";
         $check_result = mysqli_query($conn, $check_sql);
         
         if (mysqli_num_rows($check_result) > 0) {
-            // Update existing submission
+            
             $sql = "UPDATE assessment_submissions 
                     SET answer_text = '$answer_text', file_path = " . ($file_path ? "'$file_path'" : "NULL") . ", 
                         submission_date = '$submission_date', status = 'Submitted' 
                     WHERE assessment_id = '$assessment_id' AND student_id = '$student_id'";
         } else {
-            // Create new submission
+            
             $sql = "INSERT INTO assessment_submissions (assessment_id, student_id, answer_text, file_path, submission_date, status) 
                     VALUES ('$assessment_id', '$student_id', '$answer_text', " . ($file_path ? "'$file_path'" : "NULL") . ", '$submission_date', 'Submitted')";
         }
@@ -71,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment']))
     }
 }
 
-// READ - Fetch all assessments assigned to this student
+
 $sql = "SELECT a.*, 
         (SELECT status FROM assessment_submissions WHERE assessment_id = a.id AND student_id = '$student_id') as submission_status,
         (SELECT obtained_marks FROM assessment_submissions WHERE assessment_id = a.id AND student_id = '$student_id') as obtained_marks
@@ -87,7 +86,6 @@ if ($result) {
     }
 }
 
-// Calculate statistics
 $total_assessments = count($assessments);
 $submitted_count = 0;
 $pending_count = 0;
@@ -309,7 +307,7 @@ foreach ($assessments as $assessment) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+   
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">📝 Assessments</h1>
@@ -325,7 +323,7 @@ foreach ($assessments as $assessment) {
                 <div class="alert alert-error"><?php echo $error_message; ?></div>
             <?php endif; ?>
 
-            <!-- Statistics Cards -->
+           
             <div class="overview-cards">
                 <div class="overview-card">
                     <div class="card-icon">📋</div>
@@ -352,7 +350,7 @@ foreach ($assessments as $assessment) {
                 </div>
             </div>
 
-            <!-- Assessments Grid -->
+          
             <?php if (empty($assessments)): ?>
                 <div class="no-goals">
                     <h3>📝 No Assessments Assigned Yet!</h3>
@@ -427,7 +425,7 @@ foreach ($assessments as $assessment) {
     </main>
 </div>
 
-<!-- Submission Modal -->
+
 <div id="submissionModal" class="modal">
     <div class="modal-content">
         <button class="close-modal" onclick="closeSubmissionModal()">&times;</button>
@@ -479,7 +477,7 @@ foreach ($assessments as $assessment) {
         }
     }
 
-    // File upload feedback
+  
     document.getElementById('submission_file').addEventListener('change', function(e) {
         const fileName = document.getElementById('fileName');
         if (e.target.files.length > 0) {

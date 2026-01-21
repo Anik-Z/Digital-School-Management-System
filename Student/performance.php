@@ -3,7 +3,7 @@ session_start();
 
 
 $host = 'localhost';
-$dbname = 'student_db';
+$dbname = 'studigital_school_management_system';
 $username = 'root';
 $password = '';
 
@@ -18,7 +18,7 @@ $student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
 $success_message = '';
 $error_message = '';
 
-// CREATE 
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_performance'])) {
     $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
     $assignment_name = mysqli_real_escape_string($conn, trim($_POST['assignment_name']));
@@ -41,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_performance'])) {
     }
 }
 
-// UPDATE
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_performance'])) {
     $performance_id = (int)$_POST['performance_id'];
     $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
@@ -64,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_performance'])) 
     }
 }
 
-// DELETE 
+
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $performance_id = (int)$_GET['delete'];
     $sql = "DELETE FROM performance WHERE id = '$performance_id' AND student_id = '$student_id'";
@@ -77,8 +76,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $error_message = "Error: " . mysqli_error($conn);
     }
 }
-
-// READ 
+ 
 $sql = "SELECT * FROM performance WHERE student_id = '$student_id' ORDER BY date DESC";
 $result = mysqli_query($conn, $sql);
 $performances = array();
@@ -103,7 +101,7 @@ if ($total_records > 0) {
             $highest_score = $perf['percentage'];
         }
         
-        // Calculate per subject
+        
         if (!isset($subject_stats[$perf['subject']])) {
             $subject_stats[$perf['subject']] = array('total' => 0, 'count' => 0);
         }
@@ -167,17 +165,11 @@ $chart_data = array_reverse($chart_data);
                         <span>Assessments</span>
                     </a>
                 </li>
-                <li>
-                    <a href="notices.php">
-                        <span class="nav-icon">📢</span>
-                        <span>Notices</span>
-                    </a>
-                </li>
             </ul>
         </nav>
 
         <div class="sidebar-footer">
-            <a href="../auth/logout.php" class="logout-btn">
+            <a href="../auth/login.php" class="logout-btn">
                 <span class="nav-icon">🚪</span>
                 <span>Logout</span>
             </a>
