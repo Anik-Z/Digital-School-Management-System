@@ -1,105 +1,76 @@
 <?php
 require_once 'db_connection.php';
 
-$error = '';
-$success = '';
+$error = "";
+$success = "";
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Get form data
-    $full_name = trim($_POST['name']);
-    $email = trim($_POST['email']);
-    $password = $_POST['password'];
-    $role = $_POST['role'];
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    $full_name = trim($_POST['name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? '';
     $security_question = $_POST['securityQuestion'] ?? '';
     $security_answer = trim($_POST['answer'] ?? '');
-    
-    // Additional fields based on role
-    if ($role == 'student') {
-        $class = $_POST['class'] ?? '';
-        $roll_number = $_POST['roll'] ?? '';
-        $department = $subject = null;
-    } else {
-        $department = $_POST['department'] ?? '';
-        $subject = $_POST['subject'] ?? '';
-        $class = $roll_number = null;
-    }
-    
-    // Validation
-    $errors = [];
-    
-    if (empty($full_name)) {
-        $errors[] = "Full name is required";
-    }
-    
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors[] = "Valid email is required";
-    }
-    
-    if (strlen($password) < 6) {
-        $errors[] = "Password must be at least 6 characters";
-    }
-    
-    if (empty($security_question)) {
-        $errors[] = "Please select a security question";
-    }
-    
-    if (empty($security_answer)) {
-        $errors[] = "Security answer is required";
-    }
-    
-    if ($role == 'student' && empty($class)) {
-        $errors[] = "Class is required for students";
-    }
-    
-    if ($role == 'teacher' && empty($department)) {
-        $errors[] = "Department is required for teachers";
-    }
-    
-    // If no validation errors
-    if (empty($errors)) {
-        // Check if email already exists
-        $checkEmail = $conn->prepare("SELECT id FROM users WHERE email = ?");
-        $checkEmail->execute([$email]);
-        
-        if ($checkEmail->rowCount() > 0) {
-            $error = "Email already registered. Please use a different email or login.";
+
+    $class = $_POST['class'] ?? '';
+    $roll = $_POST['roll'] ?? '';
+    $department = $_POST['department'] ?? '';
+    $subject = $_POST['subject'] ?? '';
+
+    if ($full_name === "")
+        $error = "Full name required";
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL))
+        $error = "Invalid email";
+    elseif (strlen($password) < 6)
+        $error = "Password minimum 6 characters";
+    elseif ($role === "")
+        $error = "Select role";
+    elseif ($security_question === "")
+        $error = "Select security question";
+    elseif ($security_answer === "")
+        $error = "Security answer required";
+    elseif ($role === "student" && $class === "")
+        $error = "Class required";
+    elseif ($role === "teacher" && $department === "")
+        $error = "Department required";
+
+    else {
+
+        $full_name = mysqli_real_escape_string($conn, $full_name);
+        $email = mysqli_real_escape_string($conn, $email);
+        $security_question = mysqli_real_escape_string($conn, $security_question);
+        $security_answer = mysqli_real_escape_string($conn, $security_answer);
+        $class = mysqli_real_escape_string($conn, $class);
+        $roll = mysqli_real_escape_string($conn, $roll);
+        $department = mysqli_real_escape_string($conn, $department);
+        $subject = mysqli_real_escape_string($conn, $subject);
+        $role = mysqli_real_escape_string($conn, $role);
+
+        $check = mysqli_query($conn, "SELECT id FROM users WHERE email='$email'");
+
+        if (mysqli_num_rows($check) > 0) {
+            $error = "Email already exists";
         } else {
-            // Hash password
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-            
-            // Insert user into database
-            $sql = "INSERT INTO users (full_name, email, password, role, class, roll_number, department, subject, security_question, security_answer) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            
-            $stmt = $conn->prepare($sql);
-            
-            try {
-                $stmt->execute([
-                    $full_name, 
-                    $email, 
-                    $hashed_password, 
-                    $role, 
-                    $class, 
-                    $roll_number, 
-                    $department, 
-                    $subject, 
-                    $security_question, 
-                    $security_answer
-                ]);
-                
-                $success = "Account created successfully! You can now <a href='login.php'>login</a>.";
-                // Clear form
-                $_POST = array();
-                
-            } catch (PDOException $e) {
-                $error = "Registration failed. Please try again. Error: " . $e->getMessage();
+
+            $hashed = password_hash($password, PASSWORD_DEFAULT);
+
+            $sql = "INSERT INTO users 
+            (full_name,email,password,role,class,roll_number,department,subject,security_question,security_answer)
+            VALUES
+            ('$full_name','$email','$hashed','$role','$class','$roll','$department','$subject','$security_question','$security_answer')";
+
+            if (mysqli_query($conn, $sql)) {
+                $success = "Registration successful";
+                $_POST = [];
+            } else {
+                $error = mysqli_error($conn);
             }
         }
-    } else {
-        $error = implode("<br>", $errors);
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -167,12 +138,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <form method="post" action="">
             <div class="form-group">
                 <label>Full Name *</label>
-                <input type="text" name="name" value="<?php echo htmlspecialchars($_POST['name'] ?? ''); ?>" required>
+                <input type="text" name="name" value="<?php echo isset($_POST['name']) ? htmlspecialchars($_POST['name']) : ''; ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Email Address *</label>
-                <input type="email" name="email" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required>
+                <input type="email" name="email" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" required>
             </div>
 
             <div class="form-group">
@@ -193,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             <div class="form-group">
                 <label for="securityAnswer">Security Answer *</label>
-                <input type="text" id="securityAnswer" name="answer" placeholder="Ex: Dog, Atif Aslam" value="<?php echo htmlspecialchars($_POST['answer'] ?? ''); ?>" required>
+                <input type="text" id="securityAnswer" name="answer" placeholder="Ex: Dog, Atif Aslam" value="<?php echo isset($_POST['answer']) ? htmlspecialchars($_POST['answer']) : ''; ?>" required>
                 <small class="form-hint">Enter the answer to your security question</small>
             </div>
 
@@ -217,11 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                  style="display: <?php echo (isset($_POST['role']) && $_POST['role'] == 'student') ? 'block' : 'none'; ?>;">
                 <div class="form-group">
                     <label>Class *</label>
-                    <input type="text" name="class" value="<?php echo htmlspecialchars($_POST['class'] ?? ''); ?>">
+                    <input type="text" name="class" value="<?php echo isset($_POST['class']) ? htmlspecialchars($_POST['class']) : ''; ?>">
                 </div>
                 <div class="form-group">
                     <label>Roll Number</label>
-                    <input type="text" name="roll" value="<?php echo htmlspecialchars($_POST['roll'] ?? ''); ?>">
+                    <input type="text" name="roll" value="<?php echo isset($_POST['roll']) ? htmlspecialchars($_POST['roll']) : ''; ?>">
                 </div>
             </div>
 
@@ -229,11 +200,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                  style="display: <?php echo (isset($_POST['role']) && $_POST['role'] == 'teacher') ? 'block' : 'none'; ?>;">
                 <div class="form-group">
                     <label>Department *</label>
-                    <input type="text" name="department" value="<?php echo htmlspecialchars($_POST['department'] ?? ''); ?>">
+                    <input type="text" name="department" value="<?php echo isset($_POST['department']) ? htmlspecialchars($_POST['department']) : ''; ?>">
                 </div>
                 <div class="form-group">
                     <label>Subject</label>
-                    <input type="text" name="subject" value="<?php echo htmlspecialchars($_POST['subject'] ?? ''); ?>">
+                    <input type="text" name="subject" value="<?php echo isset($_POST['subject']) ? htmlspecialchars($_POST['subject']) : ''; ?>">
                 </div>
             </div>
 

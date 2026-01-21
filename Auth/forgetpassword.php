@@ -1,45 +1,57 @@
 <?php
 require_once 'db_connection.php';
 
-$error = '';
-$success = '';
+$error = "";
+$success = "";
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = trim($_POST['email']);
-    $security_question = $_POST['securityQuestion'];
-    $security_answer = trim($_POST['answer']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
+    $security_question = mysqli_real_escape_string($conn, $_POST['securityQuestion']);
+    $security_answer = mysqli_real_escape_string($conn, trim($_POST['answer']));
     $new_password = $_POST['password'];
     $confirm_password = $_POST['confirmPassword'];
-    
-    // Validate
+
     if ($new_password !== $confirm_password) {
         $error = "Passwords do not match";
-    } elseif (strlen($new_password) < 6) {
+    }
+    elseif (strlen($new_password) < 6) {
         $error = "Password must be at least 6 characters";
-    } else {
-        // Check user and security answer
-        $sql = "SELECT * FROM users WHERE email = ? AND security_question = ? AND security_answer = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->execute([$email, $security_question, $security_answer]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($user) {
-            // Update password
+    }
+    else {
+
+        $sql = "SELECT * FROM users 
+                WHERE email='$email' 
+                AND security_question='$security_question' 
+                AND security_answer='$security_answer'";
+
+        $result = mysqli_query($conn, $sql);
+
+        if ($result && mysqli_num_rows($result) === 1) {
+
+            $user = mysqli_fetch_assoc($result);
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-            $update_sql = "UPDATE users SET password = ? WHERE email = ?";
-            $update_stmt = $conn->prepare($update_sql);
-            
-            if ($update_stmt->execute([$hashed_password, $email])) {
-                $success = "Password reset successfully! You can now login with your new password.";
-            } else {
-                $error = "Password reset failed. Please try again.";
-            }
+
+            mysqli_query(
+                $conn,
+                "UPDATE users SET password='$hashed_password' WHERE id='{$user['id']}'"
+            );
+
+            // remove remember tokens
+            mysqli_query(
+                $conn,
+                "DELETE FROM remember_tokens WHERE user_id='{$user['id']}'"
+            );
+
+            $success = "Password reset successful. You can now login.";
+
         } else {
-            $error = "Invalid email, security question, or answer";
+            $error = "Invalid email or security answer";
         }
     }
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -79,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 id="recoveryEmail"
                 name="email"
                 placeholder="name@university.edu"
-                value="<?php echo $_POST['email'] ?? ''; ?>"
+                value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>"
                 required
               />
               <small class="form-hint"
@@ -105,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 id="recoveryAnswer"
                 name="answer"
                 placeholder="Ex: Dog, Atif Aslam"
-                value="<?php echo $_POST['answer'] ?? ''; ?>"
+                value="<?php echo isset($_POST['answer']) ? htmlspecialchars($_POST['answer']) : ''; ?>"
                 required
               />
               <small class="form-hint"
