@@ -181,7 +181,7 @@ if ($graded_result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assessment Management - Teacher</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../Assets/css/dashboard.css">
+    <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
 
@@ -211,19 +211,19 @@ if ($graded_result) {
                 <li>
                     <a href="assessment_management.php" class="active">
                         <span class="nav-icon">📝</span>
-                        <span>Assessments</span>
+                        <span>Assessments Management</span>
                     </a>
                 </li>
                 <li>
-                    <a href="students.php">
+                    <a href="student_risk.php">
                         <span class="nav-icon">👥</span>
-                        <span>Students</span>
+                        <span>Risk_Indicator</span>
                     </a>
                 </li>
                 <li>
-                    <a href="performance.php">
+                    <a href="intervention_log.php">
                         <span class="nav-icon">📈</span>
-                        <span>Performance</span>
+                        <span>Intervention_log</span>
                     </a>
                 </li>
                 <li>
