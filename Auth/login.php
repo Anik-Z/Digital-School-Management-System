@@ -4,6 +4,9 @@ require_once 'db_connection.php';
 
 $error = "";
 
+define("ADMIN_EMAIL", "admin@school.com");
+define("ADMIN_PASSWORD", "admin123");
+
 
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['remember_me'])) {
 
@@ -66,6 +69,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $sql = "SELECT * FROM users WHERE email = '$email'";
     $result = mysqli_query($conn, $sql);
+
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+ 
+    if ($email === ADMIN_EMAIL && $password === ADMIN_PASSWORD) {
+        $_SESSION['admin'] = true;
+        $_SESSION['admin_email'] = $email;
+        header("Location: ../Admin/dashboard.php");
+        exit;
+    } else {
+        $error = "Invalid Admin Credentials";
+    }
 
     if ($result && mysqli_num_rows($result) === 1) {
 

@@ -52,9 +52,7 @@ CREATE TABLE classes (
     FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
 );
 
--- Update students table
-ALTER TABLE students ADD COLUMN class_id INT NULL;
-ALTER TABLE students ADD FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL;
+
 
 -- Policies table
 CREATE TABLE policies (
@@ -143,6 +141,10 @@ CREATE TABLE students (
     risk_status ENUM('Green','Yellow','Red') DEFAULT 'Green',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- Update students table
+ALTER TABLE students ADD COLUMN class_id INT NULL;
+ALTER TABLE students ADD FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE SET NULL;
 
 /*---------------Queris for Teacher=====================================*/
 CREATE TABLE teachers (

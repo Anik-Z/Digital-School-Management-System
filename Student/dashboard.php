@@ -1,41 +1,62 @@
 <?php
 session_start();
 
+// -----------------------------
+// DATABASE CONNECTION
+// -----------------------------
 $conn = mysqli_connect("localhost", "root", "", "digital_school_management_system");
 if (!$conn) {
-    die("Database connection failed");
+    die("Database connection failed: " . mysqli_connect_error());
 }
 
-
+// -----------------------------
+// LOGIN CHECK
+// -----------------------------
 if (!isset($_SESSION['email'])) {
     header("Location: login.php");
     exit;
 }
 
-$email = $_SESSION['email'];
+$email = mysqli_real_escape_string($conn, $_SESSION['email']);
 
-
+// -----------------------------
+// GET STUDENT INFO
+// -----------------------------
 $sqlStudent = "
 SELECT 
-    u.full_name, u.email, u.class, u.roll_number,
-    s.id AS student_id, s.risk_status
-FROM users u
-JOIN students s ON u.email = s.email
-WHERE u.email = '$email' AND u.role = 'student'
+    id,
+    full_name,
+    email,
+    class,
+    roll_number,
+    risk_status
+FROM users
+WHERE email = '$email' AND role = 'student'
 ";
+
 $resStudent = mysqli_query($conn, $sqlStudent);
+
+if (!$resStudent || mysqli_num_rows($resStudent) == 0) {
+    die("Student record not found.");
+}
+
 $student = mysqli_fetch_assoc($resStudent);
+$student_id = $student['id']; // Using users.id as student_id
 
-$student_id = $student['student_id'];
-
+// -----------------------------
+// CALCULATE GPA
+// -----------------------------
 $sqlGpa = "
-SELECT ROUND(AVG(percentage)/25,2) AS gpa 
-FROM performance 
+SELECT IFNULL(ROUND(AVG(percentage)/25,2), 0) AS gpa
+FROM performance
 WHERE student_id = $student_id
 ";
-$gpa = mysqli_fetch_assoc(mysqli_query($conn, $sqlGpa))['gpa'] ?? 0;
+$gpaRes = mysqli_query($conn, $sqlGpa);
+$gpa = mysqli_fetch_assoc($gpaRes)['gpa'];
 
-
+// -----------------------------
+// ASSIGNED COURSES
+// -----------------------------
 $sqlCourses = "
 SELECT DISTINCT subject 
 FROM assessments 
@@ -44,22 +65,26 @@ WHERE assigned_to_all = 1
 ";
 $courses = mysqli_query($conn, $sqlCourses);
 
-
+// -----------------------------
+// COURSE PROGRESS
+// -----------------------------
 $sqlProgress = "
-SELECT subject, COUNT(*) total, AVG(percentage) avg_score
+SELECT subject, COUNT(*) AS total, AVG(percentage) AS avg_score
 FROM performance
 WHERE student_id = $student_id
 GROUP BY subject
 ";
 $progress = mysqli_query($conn, $sqlProgress);
 
-
+// -----------------------------
+// RECENT ACTIVITIES
+// -----------------------------
 $sqlActivities = "
 SELECT date, activity, status FROM (
     SELECT 
         submission_date AS date,
         CONCAT('Submitted Assessment #', assessment_id) AS activity,
-        status
+        status AS status
     FROM assessment_submissions
     WHERE student_id = $student_id
 
@@ -67,15 +92,17 @@ SELECT date, activity, status FROM (
 
     SELECT 
         date,
-        assignment_name,
-        CONCAT(score,'/',max_score)
+        assignment_name AS activity,
+        CONCAT(score,'/',max_score) AS status
     FROM performance
     WHERE student_id = $student_id
 ) AS acts
 ORDER BY date DESC
 LIMIT 10
 ";
+
 $activities = mysqli_query($conn, $sqlActivities);
+
 ?>
 
 <!DOCTYPE html>
@@ -90,11 +117,11 @@ $activities = mysqli_query($conn, $sqlActivities);
 
 <div class="dashboard-layout">
 
-    
+    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-avatar">
-                <?= strtoupper(substr($student['full_name'],0,1)) ?>
+                <?= strtoupper(substr($student['full_name'], 0, 1)) ?>
             </div>
             <div class="user-details">
                 <h4><?= htmlspecialchars($student['full_name']) ?></h4>
@@ -112,18 +139,18 @@ $activities = mysqli_query($conn, $sqlActivities);
         </nav>
 
         <div class="sidebar-footer">
-            <p>Risk Status: <strong><?= $student['risk_status'] ?></strong></p>
+            <p>Risk Status: <strong><?= htmlspecialchars($student['risk_status']) ?></strong></p>
         </div>
     </aside>
 
-    
+    <!-- MAIN CONTENT -->
     <main class="main-content">
 
         <h1 class="page-title">
-            Welcome, <?= explode(" ",$student['full_name'])[0] ?>
+            Welcome, <?= explode(" ", $student['full_name'])[0] ?>
         </h1>
 
-        
+        <!-- OVERVIEW CARDS -->
         <section class="overview-cards">
 
             <div class="overview-card">
@@ -132,41 +159,43 @@ $activities = mysqli_query($conn, $sqlActivities);
             </div>
 
             <div class="overview-card">
-                <div class="card-value"><?= $student['class'] ?></div>
+                <div class="card-value"><?= htmlspecialchars($student['class']) ?></div>
                 <div class="card-label">Class</div>
             </div>
 
             <div class="overview-card">
-                <div class="card-value"><?= $student['roll_number'] ?></div>
+                <div class="card-value"><?= htmlspecialchars($student['roll_number']) ?></div>
                 <div class="card-label">Roll No</div>
             </div>
 
         </section>
 
+        <!-- ASSIGNED COURSES -->
         <section class="card">
             <h3>Assigned Courses</h3>
             <ul>
-                <?php while($c = mysqli_fetch_assoc($courses)): ?>
+                <?php while ($c = mysqli_fetch_assoc($courses)): ?>
                     <li><?= htmlspecialchars($c['subject']) ?></li>
                 <?php endwhile; ?>
             </ul>
         </section>
 
-      
+        <!-- COURSE PROGRESS -->
         <section class="progress-summary">
             <h3>Course Progress</h3>
 
-            <?php while($p = mysqli_fetch_assoc($progress)): ?>
+            <?php while ($p = mysqli_fetch_assoc($progress)): ?>
                 <div class="progress-item">
-                    <strong><?= $p['subject'] ?></strong>
+                    <strong><?= htmlspecialchars($p['subject']) ?></strong>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: <?= $p['avg_score'] ?>%"></div>
+                        <div class="progress-fill" style="width: <?= round($p['avg_score']) ?>%"></div>
                     </div>
-                    <small>Average: <?= round($p['avg_score'],1) ?>%</small>
+                    <small>Average: <?= round($p['avg_score'], 1) ?>%</small>
                 </div>
             <?php endwhile; ?>
         </section>
 
+        <!-- RECENT ACTIVITIES -->
         <section class="card">
             <h3>Recent Activities</h3>
 
@@ -179,11 +208,11 @@ $activities = mysqli_query($conn, $sqlActivities);
                     </tr>
                 </thead>
                 <tbody>
-                <?php while($a = mysqli_fetch_assoc($activities)): ?>
+                <?php while ($a = mysqli_fetch_assoc($activities)): ?>
                     <tr>
                         <td><?= $a['date'] ?></td>
                         <td><?= htmlspecialchars($a['activity']) ?></td>
-                        <td><?= $a['status'] ?></td>
+                        <td><?= htmlspecialchars($a['status']) ?></td>
                     </tr>
                 <?php endwhile; ?>
                 </tbody>
