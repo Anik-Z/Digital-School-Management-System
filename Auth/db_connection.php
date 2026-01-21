@@ -1,15 +1,14 @@
 <?php
 session_start();
 
-$host = 'localhost';
-$dbname = 'digital_school';
-$username = 'root';
-$password = '';
+$host = "localhost";
+$username = "root";
+$password = "";
+$dbname = "digital_school_management_system";
 
-try {
-    $conn = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
+$conn = mysqli_connect($host, $username, $password, $dbname);
+
+if (!$conn) {
+    die("Database connection failed: " . mysqli_connect_error());
 }
 ?>
