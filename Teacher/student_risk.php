@@ -1,7 +1,7 @@
 <?php
 session_start();
 
-// Database connection
+
 $host = 'localhost';
 $dbname = 'student_db';
 $username = 'root';
@@ -19,7 +19,7 @@ $teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : '
 $success_message = '';
 $error_message = '';
 
-// UPDATE Risk Status
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_risk'])) {
     $student_id = (int)$_POST['student_id'];
     $risk_status = mysqli_real_escape_string($conn, $_POST['risk_status']);
@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_risk'])) {
     }
 }
 
-// Fetch all students with their performance data
+
 $students_sql = "SELECT s.*, 
                 (SELECT AVG(percentage) FROM performance WHERE student_id = s.id) as avg_performance,
                 (SELECT COUNT(*) FROM assessment_submissions sub 
@@ -59,7 +59,7 @@ if ($students_result) {
     }
 }
 
-// Calculate statistics
+
 $total_students = count($students);
 $green_count = 0;
 $yellow_count = 0;
@@ -147,7 +147,7 @@ foreach ($students as $student) {
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
+    
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="user-info">
@@ -198,7 +198,7 @@ foreach ($students as $student) {
         </div>
     </aside>
 
-    <!-- Main Content -->
+   
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">⚠️ Student Risk Indicators</h1>
@@ -214,7 +214,7 @@ foreach ($students as $student) {
                 <div class="alert alert-error"><?php echo $error_message; ?></div>
             <?php endif; ?>
 
-            <!-- Risk Statistics -->
+           
             <div class="overview-cards">
                 <div class="overview-card">
                     <div class="card-icon">👥</div>
@@ -244,7 +244,7 @@ foreach ($students as $student) {
                 </div>
             </div>
 
-            <!-- Risk Legend -->
+         
             <div class="card" style="margin-bottom: 2rem;">
                 <h3 style="margin-bottom: 1rem; color: var(--text-main); font-weight: 700;">Risk Status Guide</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
@@ -280,7 +280,7 @@ foreach ($students as $student) {
                 </div>
             </div>
 
-            <!-- Students Grid -->
+            
             <?php if (empty($students)): ?>
                 <div class="no-goals">
                     <h3>👥 No Students Found</h3>
@@ -358,7 +358,7 @@ foreach ($students as $student) {
     </main>
 </div>
 
-<!-- Update Risk Status Modal -->
+
 <div id="riskModal" class="modal">
     <div class="modal-content">
         <button class="close-modal" onclick="closeRiskModal()">&times;</button>
