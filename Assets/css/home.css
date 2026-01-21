@@ -10,11 +10,13 @@ body {
     color: #1f2a44;
     line-height: 1.6;
 }
+
 .logo-img {
     height: 40px;
     margin-right: 15px;
     vertical-align: middle;
 }
+
 .nav {
     display: flex;
     justify-content: space-between;
@@ -119,22 +121,11 @@ body {
     text-align: center;
 }
 
-.vision h2 {
-    font-size: 2.1rem;
-    margin-bottom: 18px;
-}
-
-.vision p {
-    max-width: 720px;
-    margin: auto;
-    color: #4a5875;
-}
-
 .vision-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 28px;
-    margin-top: 50px;
+    margin-bottom: 60px;
 }
 
 .vision-box {
@@ -152,6 +143,17 @@ body {
 .vision-box h3 {
     color: #2c4ad4;
     margin-bottom: 12px;
+}
+
+.vision h2 {
+    font-size: 2.1rem;
+    margin-bottom: 18px;
+}
+
+.vision p {
+    max-width: 720px;
+    margin: auto;
+    color: #4a5875;
 }
 
 .flow {
@@ -221,10 +223,6 @@ footer {
 .footer-section {
     flex: 1;
     min-width: 300px;
-    text-align: left;
-}
-
-.footer-section:first-child {
     text-align: left;
 }
 
