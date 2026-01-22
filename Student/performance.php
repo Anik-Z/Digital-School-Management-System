@@ -3,7 +3,7 @@ session_start();
 
 
 $host = 'localhost';
-$dbname = 'studigital_school_management_system';
+$dbname = 'digital_school_management_system';
 $username = 'root';
 $password = '';
 
@@ -13,131 +13,153 @@ if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
 
-$student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
+
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$student_id = $_SESSION['user_id'];
+$student_name = $_SESSION['full_name'] ?? 'Student';
 
 $success_message = '';
 $error_message = '';
 
 
+$tableExists = mysqli_query($conn, "SHOW TABLES LIKE 'performance'");
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_performance'])) {
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    $assignment_name = mysqli_real_escape_string($conn, trim($_POST['assignment_name']));
-    $score = (int)$_POST['score'];
-    $max_score = (int)$_POST['max_score'];
-    $date = mysqli_real_escape_string($conn, $_POST['date']);
-    
-    if (!empty($subject) && !empty($assignment_name) && $score > 0 && $max_score > 0) {
-        $percentage = round(($score / $max_score) * 100, 2);
-        $sql = "INSERT INTO performance (student_id, subject, assignment_name, score, max_score, percentage, date) 
-                VALUES ('$student_id', '$subject', '$assignment_name', '$score', '$max_score', '$percentage', '$date')";
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
+        $assignment_name = mysqli_real_escape_string($conn, trim($_POST['assignment_name']));
+        $score = (int)$_POST['score'];
+        $max_score = (int)$_POST['max_score'];
+        $date = mysqli_real_escape_string($conn, $_POST['date']);
         
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Performance record added successfully! 🎉";
+        if (!empty($subject) && !empty($assignment_name) && $score > 0 && $max_score > 0) {
+            $percentage = round(($score / $max_score) * 100, 2);
+            
+            $sql = "INSERT INTO performance (student_id, subject, assignment_name, score, max_score, percentage, date) 
+                    VALUES ('$student_id', '$subject', '$assignment_name', '$score', '$max_score', '$percentage', '$date')";
+            
+            if (mysqli_query($conn, $sql)) {
+                $success_message = "Performance record added successfully! 🎉";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
         } else {
-            $error_message = "Error: " . mysqli_error($conn);
+            $error_message = "All fields are required with valid values!";
         }
     } else {
-        $error_message = "All fields are required!";
+        $error_message = "Performance tracking is not available yet. Database setup required.";
     }
 }
 
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_performance'])) {
-    $performance_id = (int)$_POST['performance_id'];
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    $assignment_name = mysqli_real_escape_string($conn, trim($_POST['assignment_name']));
-    $score = (int)$_POST['score'];
-    $max_score = (int)$_POST['max_score'];
-    $date = mysqli_real_escape_string($conn, $_POST['date']);
-    
-    if (!empty($subject) && !empty($assignment_name) && $score > 0 && $max_score > 0) {
-        $percentage = round(($score / $max_score) * 100, 2);
-        $sql = "UPDATE performance SET subject = '$subject', assignment_name = '$assignment_name', 
-                score = '$score', max_score = '$max_score', percentage = '$percentage', date = '$date' 
-                WHERE id = '$performance_id' AND student_id = '$student_id'";
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $performance_id = (int)$_POST['performance_id'];
+        $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
+        $assignment_name = mysqli_real_escape_string($conn, trim($_POST['assignment_name']));
+        $score = (int)$_POST['score'];
+        $max_score = (int)$_POST['max_score'];
+        $date = mysqli_real_escape_string($conn, $_POST['date']);
         
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Performance record updated successfully! ✨";
-        } else {
-            $error_message = "Error: " . mysqli_error($conn);
+        if (!empty($subject) && !empty($assignment_name) && $score > 0 && $max_score > 0) {
+            $percentage = round(($score / $max_score) * 100, 2);
+            
+            $sql = "UPDATE performance SET 
+                    subject = '$subject', 
+                    assignment_name = '$assignment_name', 
+                    score = '$score', 
+                    max_score = '$max_score', 
+                    percentage = '$percentage', 
+                    date = '$date' 
+                    WHERE id = '$performance_id' AND student_id = '$student_id'";
+            
+            if (mysqli_query($conn, $sql)) {
+                $success_message = "Performance record updated successfully! ✨";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
         }
     }
 }
 
 
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $performance_id = (int)$_GET['delete'];
-    $sql = "DELETE FROM performance WHERE id = '$performance_id' AND student_id = '$student_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Performance record deleted successfully! 🗑️";
-        header("Location: performance.php");
-        exit();
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
- 
-$sql = "SELECT * FROM performance WHERE student_id = '$student_id' ORDER BY date DESC";
-$result = mysqli_query($conn, $sql);
-$performances = array();
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $performances[] = $row;
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $performance_id = (int)$_GET['delete'];
+        $sql = "DELETE FROM performance WHERE id = '$performance_id' AND student_id = '$student_id'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Performance record deleted successfully! 🗑️";
+            header("Location: performance.php");
+            exit();
+        } else {
+            $error_message = "Error: " . mysqli_error($conn);
+        }
     }
 }
 
 
-$total_records = count($performances);
+$performances = [];
 $average_score = 0;
 $highest_score = 0;
-$subject_stats = array();
+$total_records = 0;
+$subject_stats = [];
+$chart_data = [];
 
-if ($total_records > 0) {
-    $total_percentage = 0;
-    foreach ($performances as $perf) {
-        $total_percentage += $perf['percentage'];
-        if ($perf['percentage'] > $highest_score) {
-            $highest_score = $perf['percentage'];
+if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+    $sql = "SELECT * FROM performance WHERE student_id = '$student_id' ORDER BY date DESC";
+    $result = mysqli_query($conn, $sql);
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $performances[] = $row;
         }
-        
-        
-        if (!isset($subject_stats[$perf['subject']])) {
-            $subject_stats[$perf['subject']] = array('total' => 0, 'count' => 0);
-        }
-        $subject_stats[$perf['subject']]['total'] += $perf['percentage'];
-        $subject_stats[$perf['subject']]['count']++;
     }
-    $average_score = round($total_percentage / $total_records, 2);
+    
+
+    $total_records = count($performances);
+    
+    if ($total_records > 0) {
+        $total_percentage = 0;
+        foreach ($performances as $perf) {
+            $total_percentage += $perf['percentage'];
+            if ($perf['percentage'] > $highest_score) {
+                $highest_score = $perf['percentage'];
+            }
+            
+            
+            if (!isset($subject_stats[$perf['subject']])) {
+                $subject_stats[$perf['subject']] = ['total' => 0, 'count' => 0];
+            }
+            $subject_stats[$perf['subject']]['total'] += $perf['percentage'];
+            $subject_stats[$perf['subject']]['count']++;
+        }
+        $average_score = round($total_percentage / $total_records, 2);
+        
+        // Prepare chart data (last 6 records)
+        $chart_data = array_slice($performances, 0, 6);
+        $chart_data = array_reverse($chart_data);
+    }
 }
-
-
-$chart_data = array_slice($performances, 0, 6);
-$chart_data = array_reverse($chart_data);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
 
 <div class="dashboard-layout">
-    <!-- Sidebar -->
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="user-info">
-                <div class="user-avatar">AJ</div>
-                <div class="user-details">
-                    <h3>Alex Johnson</h3>
-                    <p>Student</p>
-                </div>
-            </div>
-        </div>
 
         <nav class="sidebar-nav">
             <ul>
@@ -154,7 +176,7 @@ $chart_data = array_reverse($chart_data);
                     </a>
                 </li>
                 <li>
-                    <a href="test.php">
+                    <a href="goal_tracker.php">
                         <span class="nav-icon">🎯</span>
                         <span>Goal Tracker</span>
                     </a>

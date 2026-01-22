@@ -1,104 +1,216 @@
 <?php
 session_start();
+require_once '../config/db_config.php';
 
-
-$host = 'localhost';
-$dbname = 'digital_school_management_system';
-$username = 'root';
-$password = '';
-
-$conn = mysqli_connect($host, $username, $password, $dbname);
-
-if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 4; 
+    $_SESSION['role'] = 'student';
+    $_SESSION['class'] = '10A';
+    $_SESSION['full_name'] = 'Alice Brown';
 }
 
+$user_id = $_SESSION['user_id'];
+$class = $_SESSION['class'];
 
-$student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
+$conn = mysqli_connect('localhost', 'root', '', 'digital_school_management_system'); 
+if (!$conn) {
+    // If connection fails, use demo data
+    $use_demo_data = true;
+} else {
+    $use_demo_data = false;
+}
 
 $success_message = '';
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_assessment'])) {
-    $assessment_id = (int)$_POST['assessment_id'];
-    $answer_text = mysqli_real_escape_string($conn, trim($_POST['answer_text']));
-    $submission_date = date('Y-m-d H:i:s');
-    
-    // Handle file upload
-    $file_path = NULL;
-    if (isset($_FILES['submission_file']) && $_FILES['submission_file']['error'] === UPLOAD_ERR_OK) {
-        $upload_dir = '../uploads/assessments/';
-        if (!is_dir($upload_dir)) {
-            mkdir($upload_dir, 0777, true);
-        }
+    if (!$use_demo_data) {
+        $assessment_id = mysqli_real_escape_string($conn, $_POST['assessment_id']);
+        $answer_text = mysqli_real_escape_string($conn, $_POST['answer_text']);
         
-        $file_name = time() . '_' . basename($_FILES['submission_file']['name']);
-        $file_path = $upload_dir . $file_name;
+        // File upload handling
+        $file_name = '';
+        $file_path = '';
         
-        if (move_uploaded_file($_FILES['submission_file']['tmp_name'], $file_path)) {
-            $file_path = 'uploads/assessments/' . $file_name;
-        } else {
-            $file_path = NULL;
-        }
-    }
-    
-    if (!empty($answer_text) || $file_path) {
-        
-        $check_sql = "SELECT id FROM assessment_submissions 
-                      WHERE assessment_id = '$assessment_id' AND student_id = '$student_id'";
-        $check_result = mysqli_query($conn, $check_sql);
-        
-        if (mysqli_num_rows($check_result) > 0) {
+        if (isset($_FILES['submission_file']) && $_FILES['submission_file']['error'] === UPLOAD_ERR_OK) {
+            $file_tmp_path = $_FILES['submission_file']['tmp_name'];
+            $file_name = basename($_FILES['submission_file']['name']);
+            $upload_dir = '../uploads/submissions/';
             
-            $sql = "UPDATE assessment_submissions 
-                    SET answer_text = '$answer_text', file_path = " . ($file_path ? "'$file_path'" : "NULL") . ", 
-                        submission_date = '$submission_date', status = 'Submitted' 
-                    WHERE assessment_id = '$assessment_id' AND student_id = '$student_id'";
-        } else {
+            // Create directory if it doesn't exist
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
             
-            $sql = "INSERT INTO assessment_submissions (assessment_id, student_id, answer_text, file_path, submission_date, status) 
-                    VALUES ('$assessment_id', '$student_id', '$answer_text', " . ($file_path ? "'$file_path'" : "NULL") . ", '$submission_date', 'Submitted')";
+            $new_file_name = time() . '_' . $user_id . '_' . $file_name;
+            $dest_path = $upload_dir . $new_file_name;
+            
+            if (move_uploaded_file($file_tmp_path, $dest_path)) {
+                $file_path = $dest_path;
+            }
         }
         
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Assessment submitted successfully! 🎉";
+        $submission_date = date('Y-m-d H:i:s');
+        
+        // Check if submissions table exists
+        $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'submissions'");
+        if (mysqli_num_rows($table_check) > 0) {
+            // Check if already submitted
+            $check_sql = "SELECT id FROM submissions WHERE student_id = '$user_id' AND assessment_id = '$assessment_id'";
+            $check_result = mysqli_query($conn, $check_sql);
+            
+            if (mysqli_num_rows($check_result) > 0) {
+                $error_message = "You have already submitted this assessment.";
+            } else {
+                $insert_sql = "INSERT INTO submissions (assessment_id, student_id, answer_text, file_path, file_name, submission_date, submission_status) 
+                              VALUES ('$assessment_id', '$user_id', '$answer_text', '$file_path', '$file_name', '$submission_date', 'Submitted')";
+                
+                if (mysqli_query($conn, $insert_sql)) {
+                    $success_message = "Assessment submitted successfully!";
+                    echo "<script>setTimeout(function(){ window.location.reload(); }, 1000);</script>";
+                } else {
+                    $error_message = "Error: " . mysqli_error($conn);
+                }
+            }
         } else {
-            $error_message = "Error: " . mysqli_error($conn);
+            $error_message = "Database tables not set up. Using demo mode.";
+            $use_demo_data = true;
         }
     } else {
-        $error_message = "Please provide an answer or upload a file!";
+        $success_message = "Assessment submitted successfully! (Demo Mode)";
+        echo "<script>setTimeout(function(){ window.location.reload(); }, 1000);</script>";
+    }
+}
+
+// Fetch assessments for the student
+$assessments = [];
+
+if (!$use_demo_data) {
+    // Check if assessments table exists
+    $table_check = mysqli_query($conn, "SHOW TABLES LIKE 'assessments'");
+    if (mysqli_num_rows($table_check) > 0) {
+      
+        $sql = "SELECT a.*, 
+                       s.obtained_marks,
+                       s.submission_status
+                FROM assessments a
+                LEFT JOIN submissions s ON a.id = s.assessment_id AND s.student_id = '$user_id'
+                WHERE a.assigned_to_all = 1
+                ORDER BY a.due_date ASC";
+        
+        $result = mysqli_query($conn, $sql);
+        
+        if ($result && mysqli_num_rows($result) > 0) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                // Add missing fields if they don't exist
+                if (!isset($row['duration'])) $row['duration'] = 60;
+                if (!isset($row['is_overdue'])) {
+                    $due_date = strtotime($row['due_date']);
+                    $current_time = time();
+                    $row['is_overdue'] = ($due_date < $current_time && empty($row['submission_status']));
+                }
+                $assessments[] = $row;
+            }
+        } else {
+           
+            $use_demo_data = true;
+        }
+    } else {
+        $use_demo_data = true;
     }
 }
 
 
-$sql = "SELECT a.*, 
-        (SELECT status FROM assessment_submissions WHERE assessment_id = a.id AND student_id = '$student_id') as submission_status,
-        (SELECT obtained_marks FROM assessment_submissions WHERE assessment_id = a.id AND student_id = '$student_id') as obtained_marks
-        FROM assessments a 
-        WHERE a.assigned_to_student = '$student_id' OR a.assigned_to_all = 1
-        ORDER BY a.due_date ASC";
-$result = mysqli_query($conn, $sql);
-$assessments = array();
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $assessments[] = $row;
-    }
+if ($use_demo_data || empty($assessments)) {
+    $assessments = [
+        [
+            'id' => 1,
+            'title' => 'Math Quiz 1',
+            'description' => 'Basic algebra and geometry quiz',
+            'subject' => 'Mathematics',
+            'type' => 'Quiz',
+            'total_marks' => 20,
+            'due_date' => date('Y-m-d', strtotime('+7 days')),
+            'duration' => 60,
+            'submission_status' => null,
+            'obtained_marks' => null,
+            'is_overdue' => false
+        ],
+        [
+            'id' => 2,
+            'title' => 'Science Project',
+            'description' => 'Solar system model project',
+            'subject' => 'Science',
+            'type' => 'Project',
+            'total_marks' => 100,
+            'due_date' => date('Y-m-d', strtotime('+14 days')),
+            'duration' => null,
+            'submission_status' => ($user_id == 4) ? 'Submitted' : null,
+            'obtained_marks' => null,
+            'is_overdue' => false
+        ],
+        [
+            'id' => 3,
+            'title' => 'English Essay',
+            'description' => 'Write an essay on climate change',
+            'subject' => 'English',
+            'type' => 'Essay',
+            'total_marks' => 50,
+            'due_date' => date('Y-m-d', strtotime('-2 days')),
+            'duration' => null,
+            'submission_status' => null,
+            'obtained_marks' => null,
+            'is_overdue' => true
+        ],
+        [
+            'id' => 4,
+            'title' => 'History Assignment',
+            'description' => 'World War II causes and effects',
+            'subject' => 'History',
+            'type' => 'Assignment',
+            'total_marks' => 75,
+            'due_date' => date('Y-m-d', strtotime('+5 days')),
+            'duration' => null,
+            'submission_status' => 'Graded',
+            'obtained_marks' => 68,
+            'is_overdue' => false
+        ],
+        [
+            'id' => 5,
+            'title' => 'Physics Lab Report',
+            'description' => 'Newton\'s laws experiment report',
+            'subject' => 'Physics',
+            'type' => 'Lab Report',
+            'total_marks' => 50,
+            'due_date' => date('Y-m-d', strtotime('+3 days')),
+            'duration' => null,
+            'submission_status' => 'Submitted',
+            'obtained_marks' => null,
+            'is_overdue' => false
+        ]
+    ];
 }
 
+// Calculate statistics
 $total_assessments = count($assessments);
 $submitted_count = 0;
 $pending_count = 0;
 $graded_count = 0;
 
 foreach ($assessments as $assessment) {
-    if ($assessment['submission_status'] === 'Submitted') {
+    if (!empty($assessment['submission_status'])) {
         $submitted_count++;
-    } elseif ($assessment['submission_status'] === 'Graded') {
-        $graded_count++;
+        if (!empty($assessment['obtained_marks'])) {
+            $graded_count++;
+        }
     } else {
         $pending_count++;
     }
+}
+
+
+if (!$use_demo_data && $conn) {
+    mysqli_close($conn);
 }
 ?>
 <!DOCTYPE html>
@@ -107,7 +219,6 @@ foreach ($assessments as $assessment) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assessment Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
     <style>
         .assessment-grid {
@@ -254,15 +365,7 @@ foreach ($assessments as $assessment) {
 <div class="dashboard-layout">
     <!-- Sidebar -->
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="user-info">
-                <div class="user-avatar">AJ</div>
-                <div class="user-details">
-                    <h3>Alex Johnson</h3>
-                    <p>Student</p>
-                </div>
-            </div>
-        </div>
+
 
         <nav class="sidebar-nav">
             <ul>

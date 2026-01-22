@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+
 $host = 'localhost';
 $dbname = 'digital_school_management_system';
 $username = 'root';
@@ -9,102 +10,123 @@ $password = '';
 $conn = mysqli_connect($host, $username, $password, $dbname);
 
 if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+    die("Database connection failed: " . mysqli_connect_error());
 }
 
 
-$student_id = isset($_SESSION['student_id']) ? $_SESSION['student_id'] : 1;
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'student') {
+    header("Location: ../auth/login.php");
+    exit();
+}
+
+$student_id = $_SESSION['user_id'];
+$student_name = $_SESSION['full_name'] ?? 'Student';
 
 $success_message = '';
 $error_message = '';
 
 
+$tableExists = mysqli_query($conn, "SHOW TABLES LIKE 'goals'");
+
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_goal'])) {
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $deadline = mysqli_real_escape_string($conn, $_POST['deadline']);
-    
-    if (!empty($title) && !empty($description) && !empty($deadline)) {
-        $sql = "INSERT INTO goals (student_id, title, description, deadline, progress, status) 
-                VALUES ('$student_id', '$title', '$description', '$deadline', 0, 'In Progress')";
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $title = mysqli_real_escape_string($conn, trim($_POST['title']));
+        $description = mysqli_real_escape_string($conn, trim($_POST['description']));
+        $deadline = mysqli_real_escape_string($conn, $_POST['deadline']);
         
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Goal created successfully! 🎉";
+        if (!empty($title) && !empty($description) && !empty($deadline)) {
+            $sql = "INSERT INTO goals (student_id, title, description, deadline, progress, status) 
+                    VALUES ('$student_id', '$title', '$description', '$deadline', 0, 'In Progress')";
+            
+            if (mysqli_query($conn, $sql)) {
+                $success_message = "Goal created successfully! 🎉";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
         } else {
-            $error_message = "Error: " . mysqli_error($conn);
+            $error_message = "All fields are required!";
         }
     } else {
-        $error_message = "All fields are required!";
+        $error_message = "Goals feature is not available yet. Database setup required.";
     }
 }
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_goal'])) {
-    $goal_id = (int)$_POST['goal_id'];
-    $progress = (int)$_POST['progress'];
-    $status = $progress >= 100 ? 'Completed' : 'In Progress';
-    
-    $sql = "UPDATE goals SET progress = '$progress', status = '$status' 
-            WHERE id = '$goal_id' AND student_id = '$student_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Goal updated successfully! ✨";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $goal_id = (int)$_POST['goal_id'];
+        $progress = (int)$_POST['progress'];
+        $status = $progress >= 100 ? 'Completed' : 'In Progress';
+        
+        $sql = "UPDATE goals SET progress = '$progress', status = '$status' 
+                WHERE id = '$goal_id' AND student_id = '$student_id'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Goal updated successfully! ✨";
+        } else {
+            $error_message = "Error: " . mysqli_error($conn);
+        }
     }
 }
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_goal'])) {
-    $goal_id = (int)$_POST['goal_id'];
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $deadline = mysqli_real_escape_string($conn, $_POST['deadline']);
-    
-    if (!empty($title) && !empty($description) && !empty($deadline)) {
-        $sql = "UPDATE goals SET title = '$title', description = '$description', deadline = '$deadline' 
-                WHERE id = '$goal_id' AND student_id = '$student_id'";
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $goal_id = (int)$_POST['goal_id'];
+        $title = mysqli_real_escape_string($conn, trim($_POST['title']));
+        $description = mysqli_real_escape_string($conn, trim($_POST['description']));
+        $deadline = mysqli_real_escape_string($conn, $_POST['deadline']);
         
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Goal edited successfully! 📝";
-        } else {
-            $error_message = "Error: " . mysqli_error($conn);
+        if (!empty($title) && !empty($description) && !empty($deadline)) {
+            $sql = "UPDATE goals SET title = '$title', description = '$description', deadline = '$deadline' 
+                    WHERE id = '$goal_id' AND student_id = '$student_id'";
+            
+            if (mysqli_query($conn, $sql)) {
+                $success_message = "Goal edited successfully! 📝";
+            } else {
+                $error_message = "Error: " . mysqli_error($conn);
+            }
         }
     }
 }
 
 
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $goal_id = (int)$_GET['delete'];
-    $sql = "DELETE FROM goals WHERE id = '$goal_id' AND student_id = '$student_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Goal deleted successfully! 🗑️";
-        header("Location: goal_tracker.php");
-        exit();
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
+    if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+        $goal_id = (int)$_GET['delete'];
+        $sql = "DELETE FROM goals WHERE id = '$goal_id' AND student_id = '$student_id'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Goal deleted successfully! 🗑️";
+            header("Location: goal_tracker.php");
+            exit();
+        } else {
+            $error_message = "Error: " . mysqli_error($conn);
+        }
     }
 }
 
 
-$sql = "SELECT * FROM goals WHERE student_id = '$student_id' ORDER BY deadline ASC";
-$result = mysqli_query($conn, $sql);
-$goals = array();
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $goals[] = $row;
+$goals = [];
+if ($tableExists && mysqli_num_rows($tableExists) > 0) {
+    $sql = "SELECT * FROM goals WHERE student_id = '$student_id' ORDER BY deadline ASC";
+    $result = mysqli_query($conn, $sql);
+    
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $goals[] = $row;
+        }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Goal Tracker</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
@@ -112,13 +134,13 @@ if ($result) {
 <div class="dashboard-layout">
 
     <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="user-info">
-                <div class="user-avatar">AJ</div>
-                <div class="user-details">
-                    <h3>Alex Johnson</h3>
-                    <p>Student</p>
-                </div>
+    <div class="sidebar-header">
+            <div class="user-avatar">
+                <?= strtoupper(substr($student['full_name'], 0, 1)) ?>
+            </div>
+            <div class="user-details">
+                <h4><?= htmlspecialchars($student['full_name']) ?></h4>
+                <p><?= htmlspecialchars($student['class']) ?></p>
             </div>
         </div>
 
