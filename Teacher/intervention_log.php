@@ -2,38 +2,79 @@
 session_start();
 
 
-$host = 'localhost';
-$dbname = 'digital_school_management_system';
-$username = 'root';
-$password = '';
-
-$conn = mysqli_connect($host, $username, $password, $dbname);
-
+$conn = mysqli_connect('localhost', 'root', '', 'digital_school_management_system');
 if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+    die("Database connection failed. Please check your database credentials.");
 }
 
-$teacher_id = isset($_SESSION['teacher_id']) ? $_SESSION['teacher_id'] : 1;
-$teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : 'Teacher';
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 2; 
+    $_SESSION['role'] = 'teacher';
+    $_SESSION['full_name'] = 'John Smith';
+}
+
+$teacher_id = $_SESSION['user_id'];
+$teacher_name = $_SESSION['full_name'];
+
 
 $success_message = '';
 $error_message = '';
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_intervention'])) {
-    $student_id = (int)$_POST['student_id'];
-    $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $intervention_date = mysqli_real_escape_string($conn, $_POST['intervention_date']);
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $follow_up_date = !empty($_POST['follow_up_date']) ? mysqli_real_escape_string($conn, $_POST['follow_up_date']) : NULL;
-    
-    if (!empty($description)) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['create_intervention'])) {
+        $student_id = intval($_POST['student_id']);
+        $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        $intervention_date = mysqli_real_escape_string($conn, $_POST['intervention_date']);
+        $status = mysqli_real_escape_string($conn, $_POST['status']);
+        $follow_up_date = !empty($_POST['follow_up_date']) ? mysqli_real_escape_string($conn, $_POST['follow_up_date']) : NULL;
+        
+
+        $check_table = mysqli_query($conn, "SHOW TABLES LIKE 'interventions'");
+        if (!$check_table || mysqli_num_rows($check_table) == 0) {
+            mysqli_query($conn, "CREATE TABLE interventions (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                student_id INT NOT NULL,
+                teacher_id INT NOT NULL,
+                action_type VARCHAR(100) NOT NULL,
+                description TEXT NOT NULL,
+                intervention_date DATE NOT NULL,
+                follow_up_date DATE,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
+        }
+        
         $sql = "INSERT INTO interventions (student_id, teacher_id, action_type, description, intervention_date, status, follow_up_date) 
-                VALUES ('$student_id', '$teacher_id', '$action_type', '$description', '$intervention_date', '$status', " . ($follow_up_date ? "'$follow_up_date'" : "NULL") . ")";
+                VALUES ('$student_id', '$teacher_id', '$action_type', '$description', '$intervention_date', '$status', " . 
+                ($follow_up_date ? "'$follow_up_date'" : "NULL") . ")";
         
         if (mysqli_query($conn, $sql)) {
-            $success_message = "Intervention logged successfully! 🎉";
+            $success_message = "Intervention logged successfully!";
+        } else {
+            $error_message = "Error: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['edit_intervention'])) {
+        $intervention_id = intval($_POST['intervention_id']);
+        $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        $intervention_date = mysqli_real_escape_string($conn, $_POST['intervention_date']);
+        $status = mysqli_real_escape_string($conn, $_POST['status']);
+        $follow_up_date = !empty($_POST['follow_up_date']) ? mysqli_real_escape_string($conn, $_POST['follow_up_date']) : NULL;
+        
+        $sql = "UPDATE interventions SET 
+                action_type = '$action_type',
+                description = '$description',
+                intervention_date = '$intervention_date',
+                status = '$status',
+                follow_up_date = " . ($follow_up_date ? "'$follow_up_date'" : "NULL") . "
+                WHERE id = $intervention_id AND teacher_id = '$teacher_id'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Intervention updated successfully!";
         } else {
             $error_message = "Error: " . mysqli_error($conn);
         }
@@ -41,76 +82,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_intervention']
 }
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_intervention'])) {
-    $intervention_id = (int)$_POST['intervention_id'];
-    $action_type = mysqli_real_escape_string($conn, $_POST['action_type']);
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $intervention_date = mysqli_real_escape_string($conn, $_POST['intervention_date']);
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $follow_up_date = !empty($_POST['follow_up_date']) ? mysqli_real_escape_string($conn, $_POST['follow_up_date']) : NULL;
-    
-    if (!empty($description)) {
-        $sql = "UPDATE interventions 
-                SET action_type = '$action_type', description = '$description', 
-                    intervention_date = '$intervention_date', status = '$status', 
-                    follow_up_date = " . ($follow_up_date ? "'$follow_up_date'" : "NULL") . "
-                WHERE id = '$intervention_id' AND teacher_id = '$teacher_id'";
-        
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Intervention updated successfully! ✨";
-        } else {
-            $error_message = "Error: " . mysqli_error($conn);
-        }
+if (isset($_GET['delete'])) {
+    $delete_id = intval($_GET['delete']);
+    $delete_sql = "DELETE FROM interventions WHERE id = $delete_id AND teacher_id = '$teacher_id'";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Intervention deleted successfully!";
+    } else {
+        $error_message = "Error: " . mysqli_error($conn);
     }
 }
 
 
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $intervention_id = (int)$_GET['delete'];
-    $sql = "DELETE FROM interventions WHERE id = '$intervention_id' AND teacher_id = '$teacher_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Intervention deleted successfully! 🗑️";
-        header("Location: intervention_log.php");
-        exit();
-    }
-}
-
-
-$students_sql = "SELECT id, name, risk_status FROM students ORDER BY name ASC";
-$students_result = mysqli_query($conn, $students_sql);
-$students = array();
-if ($students_result) {
-    while ($row = mysqli_fetch_assoc($students_result)) {
-        $students[] = $row;
-    }
-}
-
-$filter_student = isset($_GET['student_id']) ? (int)$_GET['student_id'] : 0;
+$filter_student = isset($_GET['student_id']) ? intval($_GET['student_id']) : '';
 $filter_status = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET['status']) : '';
 
-$where_clause = "WHERE i.teacher_id = '$teacher_id'";
-if ($filter_student > 0) {
-    $where_clause .= " AND i.student_id = '$filter_student'";
-}
-if (!empty($filter_status)) {
-    $where_clause .= " AND i.status = '$filter_status'";
+
+$check_users = mysqli_query($conn, "SHOW TABLES LIKE 'users'");
+if (!$check_users || mysqli_num_rows($check_users) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        password VARCHAR(255),
+        role VARCHAR(20),
+        subject VARCHAR(50),
+        class VARCHAR(20),
+        risk_status VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
 }
 
-$interventions_sql = "SELECT i.*, s.name as student_name, s.email as student_email, s.risk_status
-                      FROM interventions i
-                      INNER JOIN students s ON i.student_id = s.id
-                      $where_clause
-                      ORDER BY i.intervention_date DESC";
-$interventions_result = mysqli_query($conn, $interventions_sql);
-$interventions = array();
-if ($interventions_result) {
-    while ($row = mysqli_fetch_assoc($interventions_result)) {
-        $interventions[] = $row;
+
+$check_teacher = mysqli_query($conn, "SELECT id FROM users WHERE id = '$teacher_id' AND role = 'teacher'");
+if (!$check_teacher || mysqli_num_rows($check_teacher) == 0) {
+    // Add teacher if not exists
+    mysqli_query($conn, "INSERT INTO users (id, full_name, role) VALUES ('$teacher_id', '$teacher_name', 'teacher')");
+}
+
+// Get students - check if they exist first
+$students = [];
+$student_query = "SELECT id, full_name as name, risk_status FROM users WHERE role = 'student' ORDER BY full_name ASC";
+$student_result = mysqli_query($conn, $student_query);
+
+if ($student_result && mysqli_num_rows($student_result) > 0) {
+    while ($row = mysqli_fetch_assoc($student_result)) {
+        $students[] = $row;
+    }
+} else {
+    // No students in database - set empty array
+    $students = [];
+}
+
+
+$interventions = [];
+$check_interventions = mysqli_query($conn, "SHOW TABLES LIKE 'interventions'");
+
+if ($check_interventions && mysqli_num_rows($check_interventions) > 0) {
+    $intervention_query = "SELECT i.*, u.full_name as student_name, u.email as student_email, u.risk_status
+                          FROM interventions i
+                          LEFT JOIN users u ON i.student_id = u.id
+                          WHERE i.teacher_id = '$teacher_id'";
+                          
+    if ($filter_student) {
+        $intervention_query .= " AND i.student_id = '$filter_student'";
+    }
+    if ($filter_status) {
+        $intervention_query .= " AND i.status = '$filter_status'";
+    }
+    
+    $intervention_query .= " ORDER BY i.intervention_date DESC";
+    
+    $intervention_result = mysqli_query($conn, $intervention_query);
+    if ($intervention_result && mysqli_num_rows($intervention_result) > 0) {
+        while ($row = mysqli_fetch_assoc($intervention_result)) {
+            $interventions[] = $row;
+        }
     }
 }
 
-
+// Statistics - calculate only from real data
 $total_interventions = count($interventions);
 $pending_count = 0;
 $in_progress_count = 0;
@@ -118,25 +168,23 @@ $resolved_count = 0;
 
 foreach ($interventions as $intervention) {
     switch ($intervention['status']) {
-        case 'Pending':
-            $pending_count++;
-            break;
-        case 'In Progress':
-            $in_progress_count++;
-            break;
-        case 'Resolved':
-            $resolved_count++;
-            break;
+        case 'Pending': $pending_count++; break;
+        case 'In Progress': $in_progress_count++; break;
+        case 'Resolved': $resolved_count++; break;
     }
 }
+
+
+mysqli_close($conn);
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intervention Log</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>

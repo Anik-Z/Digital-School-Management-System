@@ -2,148 +2,201 @@
 session_start();
 
 
-$host = 'localhost';
-$dbname = 'digital_school_management_system';
-$username = 'root';
-$password = '';
-
-$conn = mysqli_connect($host, $username, $password, $dbname);
-
+$conn = mysqli_connect('localhost', 'root', '', 'digital_school_management_system');
 if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+    die("Database connection failed. Please check your database credentials.");
 }
 
 
-$teacher_id = isset($_SESSION['teacher_id']) ? $_SESSION['teacher_id'] : 1;
-$teacher_name = isset($_SESSION['teacher_name']) ? $_SESSION['teacher_name'] : 'Teacher';
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 2; 
+    $_SESSION['role'] = 'teacher';
+    $_SESSION['full_name'] = 'John Smith';
+}
+
+$teacher_id = $_SESSION['user_id'];
+$teacher_name = $_SESSION['full_name'];
+
 
 $success_message = '';
 $error_message = '';
+$students = [];
+$assessments = [];
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment'])) {
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    $type = mysqli_real_escape_string($conn, $_POST['type']);
-    $total_marks = (int)$_POST['total_marks'];
-    $duration = !empty($_POST['duration']) ? (int)$_POST['duration'] : NULL;
-    $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
-    $assign_to = $_POST['assign_to'];
-    
-    if (!empty($title) && !empty($description) && !empty($subject) && $total_marks > 0) {
-        if ($assign_to === 'all') {
-          
-            $sql = "INSERT INTO assessments (title, description, subject, type, total_marks, duration, due_date, assigned_to_all, created_by) 
-                    VALUES ('$title', '$description', '$subject', '$type', '$total_marks', " . ($duration ? "'$duration'" : "NULL") . ", '$due_date', 1, '$teacher_id')";
-        } else {
-           
-            $student_id = (int)$assign_to;
-            $sql = "INSERT INTO assessments (title, description, subject, type, total_marks, duration, due_date, assigned_to_student, assigned_to_all, created_by) 
-                    VALUES ('$title', '$description', '$subject', '$type', '$total_marks', " . ($duration ? "'$duration'" : "NULL") . ", '$due_date', '$student_id', 0, '$teacher_id')";
-        }
-        
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Assessment created and assigned successfully! 🎉";
-        } else {
-            $error_message = "Error: " . mysqli_error($conn);
-        }
-    } else {
-        $error_message = "All required fields must be filled!";
+$check_assessments = mysqli_query($conn, "SHOW TABLES LIKE 'assessments'");
+if (!$check_assessments || mysqli_num_rows($check_assessments) == 0) {
+
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS assessments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        subject VARCHAR(50) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        total_marks INT NOT NULL,
+        duration INT,
+        due_date DATE NOT NULL,
+        created_by INT NOT NULL,
+        assigned_to_all BOOLEAN DEFAULT 1,
+        assigned_to_student INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+}
+
+
+$check_submissions = mysqli_query($conn, "SHOW TABLES LIKE 'submissions'");
+if (!$check_submissions || mysqli_num_rows($check_submissions) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS submissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        assessment_id INT NOT NULL,
+        student_id INT NOT NULL,
+        answer_text TEXT,
+        file_path VARCHAR(255),
+        file_name VARCHAR(255),
+        submission_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        obtained_marks DECIMAL(5,2),
+        submission_status VARCHAR(50) DEFAULT 'Submitted',
+        feedback TEXT,
+        FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE
+    )");
+}
+
+
+$check_users = mysqli_query($conn, "SHOW TABLES LIKE 'users'");
+if (!$check_users || mysqli_num_rows($check_users) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        password VARCHAR(255),
+        role VARCHAR(20),
+        subject VARCHAR(50),
+        class VARCHAR(20),
+        risk_status VARCHAR(20) DEFAULT 'Green',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+ 
+    mysqli_query($conn, "INSERT INTO users (full_name, role) VALUES ('$teacher_name', 'teacher')");
+    mysqli_query($conn, "INSERT INTO users (full_name, role) VALUES ('Alice Brown', 'student')");
+    mysqli_query($conn, "INSERT INTO users (full_name, role) VALUES ('Bob Wilson', 'student')");
+    mysqli_query($conn, "INSERT INTO users (full_name, role) VALUES ('Charlie Davis', 'student')");
+}
+
+
+$student_query = "SELECT id, full_name as name FROM users WHERE role = 'student' ORDER BY full_name ASC";
+$student_result = mysqli_query($conn, $student_query);
+if ($student_result && mysqli_num_rows($student_result) > 0) {
+    while ($row = mysqli_fetch_assoc($student_result)) {
+        $students[] = $row;
     }
 }
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_assessment'])) {
-    $assessment_id = (int)$_POST['assessment_id'];
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    $type = mysqli_real_escape_string($conn, $_POST['type']);
-    $total_marks = (int)$_POST['total_marks'];
-    $duration = !empty($_POST['duration']) ? (int)$_POST['duration'] : NULL;
-    $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
+$assessment_query = "SELECT a.*, 
+                    (SELECT COUNT(*) FROM submissions WHERE assessment_id = a.id) as submission_count
+                    FROM assessments a
+                    WHERE a.created_by = '$teacher_id'
+                    ORDER BY a.created_at DESC";
     
-    if (!empty($title) && !empty($description) && !empty($subject) && $total_marks > 0) {
-        $sql = "UPDATE assessments 
-                SET title = '$title', description = '$description', subject = '$subject', 
-                    type = '$type', total_marks = '$total_marks', 
-                    duration = " . ($duration ? "'$duration'" : "NULL") . ", due_date = '$due_date'
-                WHERE id = '$assessment_id' AND created_by = '$teacher_id'";
-        
-        if (mysqli_query($conn, $sql)) {
-            $success_message = "Assessment updated successfully! ✨";
-        } else {
-            $error_message = "Error: " . mysqli_error($conn);
+$assessment_result = mysqli_query($conn, $assessment_query);
+if ($assessment_result) {
+    if (mysqli_num_rows($assessment_result) > 0) {
+        while ($row = mysqli_fetch_assoc($assessment_result)) {
+            $assessments[] = $row;
         }
     }
 }
 
 
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $assessment_id = (int)$_GET['delete'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['create_assessment'])) {
+        $title = trim($_POST['title']);
+        $description = trim($_POST['description']);
+        $subject = trim($_POST['subject']);
+        $type = trim($_POST['type']);
+        $total_marks = intval($_POST['total_marks']);
+        $duration = !empty($_POST['duration']) ? intval($_POST['duration']) : NULL;
+        $due_date = trim($_POST['due_date']);
+        $assign_to = $_POST['assign_to'];
+        
+        
+        if (empty($title) || empty($description) || empty($subject) || empty($type) || empty($total_marks) || empty($due_date)) {
+            $error_message = "All required fields must be filled!";
+        } else {
+   
+            $title = mysqli_real_escape_string($conn, $title);
+            $description = mysqli_real_escape_string($conn, $description);
+            $subject = mysqli_real_escape_string($conn, $subject);
+            $type = mysqli_real_escape_string($conn, $type);
+            $due_date = mysqli_real_escape_string($conn, $due_date);
+            
+
+            $assigned_to_all = ($assign_to == 'all') ? 1 : 0;
+            $assigned_to_student = ($assign_to != 'all') ? intval($assign_to) : NULL;
+            
+        
+            $sql = "INSERT INTO assessments (title, description, subject, type, total_marks, duration, due_date, created_by, assigned_to_all, assigned_to_student) 
+                    VALUES ('$title', '$description', '$subject', '$type', $total_marks, " . 
+                    ($duration ? "$duration" : "NULL") . ", '$due_date', '$teacher_id', $assigned_to_all, " . 
+                    ($assigned_to_student ? "$assigned_to_student" : "NULL") . ")";
+            
+            if (mysqli_query($conn, $sql)) {
+                $success_message = "✅ Assessment created successfully!";
+   
+                header("Location: assessment_management.php?success=1");
+                exit();
+            } else {
+                $error_message = "❌ Error creating assessment: " . mysqli_error($conn);
+            }
+        }
+    }
     
-    
-    $delete_submissions = "DELETE FROM assessment_submissions WHERE assessment_id = '$assessment_id'";
-    mysqli_query($conn, $delete_submissions);
-    
-    
-    $sql = "DELETE FROM assessments WHERE id = '$assessment_id' AND created_by = '$teacher_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Assessment deleted successfully! 🗑️";
+    if (isset($_POST['edit_assessment'])) {
+        $assessment_id = intval($_POST['assessment_id']);
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        $subject = mysqli_real_escape_string($conn, $_POST['subject']);
+        $type = mysqli_real_escape_string($conn, $_POST['type']);
+        $total_marks = intval($_POST['total_marks']);
+        $duration = !empty($_POST['duration']) ? intval($_POST['duration']) : NULL;
+        $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
+        
+        $sql = "UPDATE assessments SET 
+                title = '$title',
+                description = '$description',
+                subject = '$subject',
+                type = '$type',
+                total_marks = $total_marks,
+                duration = " . ($duration ? "$duration" : "NULL") . ",
+                due_date = '$due_date'
+                WHERE id = $assessment_id AND created_by = '$teacher_id'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Assessment updated successfully!";
+            header("Location: assessment_management.php");
+            exit();
+        } else {
+            $error_message = "Error updating assessment: " . mysqli_error($conn);
+        }
+    }
+}
+
+// Handle delete
+if (isset($_GET['delete'])) {
+    $delete_id = intval($_GET['delete']);
+    $delete_sql = "DELETE FROM assessments WHERE id = $delete_id AND created_by = '$teacher_id'";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Assessment deleted successfully!";
         header("Location: assessment_management.php");
         exit();
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting assessment: " . mysqli_error($conn);
     }
 }
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['grade_submission'])) {
-    $submission_id = (int)$_POST['submission_id'];
-    $obtained_marks = (int)$_POST['obtained_marks'];
-    $feedback = mysqli_real_escape_string($conn, trim($_POST['feedback']));
-    $graded_at = date('Y-m-d H:i:s');
-    
-    $sql = "UPDATE assessment_submissions 
-            SET obtained_marks = '$obtained_marks', feedback = '$feedback', 
-                status = 'Graded', graded_by = '$teacher_id', graded_at = '$graded_at'
-            WHERE id = '$submission_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Submission graded successfully! 📝";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-
-$sql = "SELECT a.*, 
-        COUNT(DISTINCT s.id) as submission_count
-        FROM assessments a
-        LEFT JOIN assessment_submissions s ON a.id = s.assessment_id
-        WHERE a.created_by = '$teacher_id'
-        GROUP BY a.id
-        ORDER BY a.created_at DESC";
-$result = mysqli_query($conn, $sql);
-$assessments = array();
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $assessments[] = $row;
-    }
-}
-
-
-$students_sql = "SELECT id, name, email FROM students ORDER BY name ASC";
-$students_result = mysqli_query($conn, $students_sql);
-$students = array();
-
-if ($students_result) {
-    while ($row = mysqli_fetch_assoc($students_result)) {
-        $students[] = $row;
-    }
+if (isset($_GET['success'])) {
+    $success_message = "✅ Assessment created successfully!";
 }
 
 
@@ -153,25 +206,33 @@ $pending_grading = 0;
 $graded_count = 0;
 
 foreach ($assessments as $assessment) {
-    $total_submissions += $assessment['submission_count'];
+    $total_submissions += intval($assessment['submission_count'] ?? 0);
 }
 
-$pending_sql = "SELECT COUNT(*) as pending FROM assessment_submissions s
+
+$pending_query = "SELECT COUNT(*) as pending FROM submissions s
+                 INNER JOIN assessments a ON s.assessment_id = a.id
+                 WHERE a.created_by = '$teacher_id' AND (s.submission_status = 'Submitted')";
+$pending_result = mysqli_query($conn, $pending_query);
+if ($pending_result && $row = mysqli_fetch_assoc($pending_result)) {
+    $pending_grading = $row['pending'];
+}
+
+$graded_query = "SELECT COUNT(*) as graded FROM submissions s
                 INNER JOIN assessments a ON s.assessment_id = a.id
-                WHERE a.created_by = '$teacher_id' AND s.status = 'Submitted'";
-$pending_result = mysqli_query($conn, $pending_sql);
-if ($pending_result) {
-    $pending_row = mysqli_fetch_assoc($pending_result);
-    $pending_grading = $pending_row['pending'];
+                WHERE a.created_by = '$teacher_id' AND s.obtained_marks IS NOT NULL";
+$graded_result = mysqli_query($conn, $graded_query);
+if ($graded_result && $row = mysqli_fetch_assoc($graded_result)) {
+    $graded_count = $row['graded'];
 }
 
-$graded_sql = "SELECT COUNT(*) as graded FROM assessment_submissions s
-               INNER JOIN assessments a ON s.assessment_id = a.id
-               WHERE a.created_by = '$teacher_id' AND s.status = 'Graded'";
-$graded_result = mysqli_query($conn, $graded_sql);
-if ($graded_result) {
-    $graded_row = mysqli_fetch_assoc($graded_result);
-    $graded_count = $graded_row['graded'];
+
+if (empty($students)) {
+    $students = [
+        ['id' => 1, 'name' => 'Alice Brown'],
+        ['id' => 2, 'name' => 'Bob Wilson'],
+        ['id' => 3, 'name' => 'Charlie Davis']
+    ];
 }
 ?>
 <!DOCTYPE html>
@@ -180,7 +241,6 @@ if ($graded_result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assessment Management - Teacher</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
