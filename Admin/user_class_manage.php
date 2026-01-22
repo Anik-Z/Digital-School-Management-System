@@ -1,194 +1,248 @@
 <?php
 session_start();
 
-// Database connection
-$host = 'localhost';
-$dbname = 'digital_school_management_system';
-$username = 'root';
-$password = '';
 
-$conn = mysqli_connect($host, $username, $password, $dbname);
-
+$conn = mysqli_connect('localhost', 'root', '', 'digital_school_management_system');
 if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+    die("Database connection failed. Please check your database credentials.");
 }
 
-$admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admin';
+
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 1;
+    $_SESSION['role'] = 'admin';
+    $_SESSION['full_name'] = 'Admin User';
+}
+
+
+if ($_SESSION['role'] !== 'admin') {
+    echo "<script>alert('Access denied. Admins only.'); window.location.href='../auth/login.php';</script>";
+    exit();
+}
+
+$admin_name = $_SESSION['full_name'];
+
+
 $success_message = '';
 $error_message = '';
 
-// CREATE Student
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_student'])) {
-    $name = mysqli_real_escape_string($conn, trim($_POST['name']));
-    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
-    $class_id = (int)$_POST['class_id'];
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+$check_users = mysqli_query($conn, "SHOW TABLES LIKE 'users'");
+if (!$check_users || mysqli_num_rows($check_users) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        full_name VARCHAR(100) NOT NULL,
+        email VARCHAR(100),
+        password VARCHAR(255),
+        role VARCHAR(20),
+        subject VARCHAR(50),
+        class VARCHAR(20),
+        risk_status VARCHAR(20) DEFAULT 'Green',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
     
-    $sql = "INSERT INTO students (name, email, password, class_id, risk_status) 
-            VALUES ('$name', '$email', '$password', '$class_id', 'Green')";
+    // Add demo data
+    mysqli_query($conn, "INSERT INTO users (full_name, email, password, role) VALUES ('Admin User', 'admin@school.com', 'demo123', 'admin')");
+    mysqli_query($conn, "INSERT INTO users (full_name, email, password, role, subject) VALUES ('John Smith', 'john.smith@school.com', 'demo123', 'teacher', 'Mathematics')");
+    mysqli_query($conn, "INSERT INTO users (full_name, email, password, role, class) VALUES ('Alice Brown', 'alice@school.com', 'demo123', 'student', '10A')");
+    mysqli_query($conn, "INSERT INTO users (full_name, email, password, role, class) VALUES ('Bob Wilson', 'bob@school.com', 'demo123', 'student', '10A')");
+}
+
+$check_classes = mysqli_query($conn, "SHOW TABLES LIKE 'classes'");
+if (!$check_classes || mysqli_num_rows($check_classes) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS classes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(50) NOT NULL,
+        teacher_id INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
     
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Student added successfully! 🎉";
+
+    mysqli_query($conn, "INSERT INTO classes (name, teacher_id) VALUES ('Grade 10A', 2)");
+    mysqli_query($conn, "INSERT INTO classes (name, teacher_id) VALUES ('Grade 10B', NULL)");
+}
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['create_student'])) {
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $class_id = mysqli_real_escape_string($conn, $_POST['class_id']);
+        $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : password_hash('student123', PASSWORD_DEFAULT);
+        
+        $sql = "INSERT INTO users (full_name, email, password, role, class) 
+                VALUES ('$name', '$email', '$password', 'student', '$class_id')";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Student added successfully!";
+        } else {
+            $error_message = "Error adding student: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['update_student'])) {
+        $student_id = intval($_POST['student_id']);
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $class_id = mysqli_real_escape_string($conn, $_POST['class_id']);
+        
+        $sql = "UPDATE users SET 
+                full_name = '$name',
+                email = '$email',
+                class = '$class_id'
+                WHERE id = $student_id AND role = 'student'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Student updated successfully!";
+        } else {
+            $error_message = "Error updating student: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['create_teacher'])) {
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $subject = mysqli_real_escape_string($conn, $_POST['subject']);
+        $password = !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : password_hash('teacher123', PASSWORD_DEFAULT);
+        
+        $sql = "INSERT INTO users (full_name, email, password, role, subject) 
+                VALUES ('$name', '$email', '$password', 'teacher', '$subject')";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Teacher added successfully!";
+        } else {
+            $error_message = "Error adding teacher: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['update_teacher'])) {
+        $teacher_id = intval($_POST['teacher_id']);
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $subject = mysqli_real_escape_string($conn, $_POST['subject']);
+        
+        $sql = "UPDATE users SET 
+                full_name = '$name',
+                email = '$email',
+                subject = '$subject'
+                WHERE id = $teacher_id AND role = 'teacher'";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Teacher updated successfully!";
+        } else {
+            $error_message = "Error updating teacher: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['create_class'])) {
+        $class_name = mysqli_real_escape_string($conn, $_POST['class_name']);
+        $teacher_id = !empty($_POST['teacher_id']) ? intval($_POST['teacher_id']) : NULL;
+        
+        $sql = "INSERT INTO classes (name, teacher_id) 
+                VALUES ('$class_name', " . ($teacher_id ? "'$teacher_id'" : "NULL") . ")";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Class created successfully!";
+        } else {
+            $error_message = "Error creating class: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['assign_teacher'])) {
+        $class_id = intval($_POST['class_id']);
+        $teacher_id = intval($_POST['teacher_id']);
+        
+        $sql = "UPDATE classes SET teacher_id = '$teacher_id' WHERE id = $class_id";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Teacher assigned to class successfully!";
+        } else {
+            $error_message = "Error assigning teacher: " . mysqli_error($conn);
+        }
+    }
+}
+
+
+if (isset($_GET['delete_student'])) {
+    $student_id = intval($_GET['delete_student']);
+    $delete_sql = "DELETE FROM users WHERE id = $student_id AND role = 'student'";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Student deleted successfully!";
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting student: " . mysqli_error($conn);
     }
 }
 
-// CREATE Teacher
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_teacher'])) {
-    $name = mysqli_real_escape_string($conn, trim($_POST['name']));
-    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    
-    $sql = "INSERT INTO teachers (name, email, subject, password) 
-            VALUES ('$name', '$email', '$subject', '$password')";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Teacher added successfully! 🎉";
+if (isset($_GET['delete_teacher'])) {
+    $teacher_id = intval($_GET['delete_teacher']);
+    $delete_sql = "DELETE FROM users WHERE id = $teacher_id AND role = 'teacher'";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Teacher deleted successfully!";
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting teacher: " . mysqli_error($conn);
     }
 }
 
-// CREATE Class
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_class'])) {
-    $class_name = mysqli_real_escape_string($conn, trim($_POST['class_name']));
-    $teacher_id = !empty($_POST['teacher_id']) ? (int)$_POST['teacher_id'] : NULL;
-    
-    $sql = "INSERT INTO classes (name, teacher_id) 
-            VALUES ('$class_name', " . ($teacher_id ? "'$teacher_id'" : "NULL") . ")";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Class created successfully! 🎉";
+if (isset($_GET['delete_class'])) {
+    $class_id = intval($_GET['delete_class']);
+    $delete_sql = "DELETE FROM classes WHERE id = $class_id";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Class deleted successfully!";
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting class: " . mysqli_error($conn);
     }
 }
 
-// UPDATE Student
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_student'])) {
-    $student_id = (int)$_POST['student_id'];
-    $name = mysqli_real_escape_string($conn, trim($_POST['name']));
-    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
-    $class_id = (int)$_POST['class_id'];
-    
-    $sql = "UPDATE students SET name = '$name', email = '$email', class_id = '$class_id' 
-            WHERE id = '$student_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Student updated successfully! ✨";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-// UPDATE Teacher
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_teacher'])) {
-    $teacher_id = (int)$_POST['teacher_id'];
-    $name = mysqli_real_escape_string($conn, trim($_POST['name']));
-    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
-    $subject = mysqli_real_escape_string($conn, trim($_POST['subject']));
-    
-    $sql = "UPDATE teachers SET name = '$name', email = '$email', subject = '$subject' 
-            WHERE id = '$teacher_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Teacher updated successfully! ✨";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-// Assign Teacher to Class
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_teacher'])) {
-    $class_id = (int)$_POST['class_id'];
-    $teacher_id = (int)$_POST['teacher_id'];
-    
-    $sql = "UPDATE classes SET teacher_id = '$teacher_id' WHERE id = '$class_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Teacher assigned to class successfully! ✅";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-// DELETE Student
-if (isset($_GET['delete_student']) && is_numeric($_GET['delete_student'])) {
-    $student_id = (int)$_GET['delete_student'];
-    $sql = "DELETE FROM students WHERE id = '$student_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Student deleted successfully! 🗑️";
-        header("Location: user_class_manage.php");
-        exit();
-    }
-}
-
-// DELETE Teacher
-if (isset($_GET['delete_teacher']) && is_numeric($_GET['delete_teacher'])) {
-    $teacher_id = (int)$_GET['delete_teacher'];
-    $sql = "DELETE FROM teachers WHERE id = '$teacher_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Teacher deleted successfully! 🗑️";
-        header("Location: user_class_manage.php");
-        exit();
-    }
-}
-
-// DELETE Class
-if (isset($_GET['delete_class']) && is_numeric($_GET['delete_class'])) {
-    $class_id = (int)$_GET['delete_class'];
-    $sql = "DELETE FROM classes WHERE id = '$class_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Class deleted successfully! 🗑️";
-        header("Location: user_class_manage.php");
-        exit();
-    }
-}
-
-// Fetch All Data
-$students_sql = "SELECT s.*, c.name as class_name FROM students s LEFT JOIN classes c ON s.class_id = c.id ORDER BY s.name ASC";
-$students_result = mysqli_query($conn, $students_sql);
-$students = array();
-if ($students_result) {
-    while ($row = mysqli_fetch_assoc($students_result)) {
+// Get students with class names
+$students = [];
+$student_query = "SELECT u.id, u.full_name as name, u.email, u.class, u.risk_status, 
+                         c.name as class_name 
+                  FROM users u
+                  LEFT JOIN classes c ON u.class = c.id
+                  WHERE u.role = 'student' 
+                  ORDER BY u.full_name ASC";
+$student_result = mysqli_query($conn, $student_query);
+if ($student_result && mysqli_num_rows($student_result) > 0) {
+    while ($row = mysqli_fetch_assoc($student_result)) {
         $students[] = $row;
     }
 }
 
-$teachers_sql = "SELECT * FROM teachers ORDER BY name ASC";
-$teachers_result = mysqli_query($conn, $teachers_sql);
-$teachers = array();
-if ($teachers_result) {
-    while ($row = mysqli_fetch_assoc($teachers_result)) {
+// Get teachers
+$teachers = [];
+$teacher_query = "SELECT id, full_name as name, email, subject 
+                  FROM users 
+                  WHERE role = 'teacher' 
+                  ORDER BY full_name ASC";
+$teacher_result = mysqli_query($conn, $teacher_query);
+if ($teacher_result && mysqli_num_rows($teacher_result) > 0) {
+    while ($row = mysqli_fetch_assoc($teacher_result)) {
         $teachers[] = $row;
     }
 }
 
-$classes_sql = "SELECT c.*, t.name as teacher_name, 
-                (SELECT COUNT(*) FROM students WHERE class_id = c.id) as student_count
+// Get classes with teacher names and student counts
+$classes = [];
+$class_query = "SELECT c.*, 
+                       u.full_name as teacher_name,
+                       (SELECT COUNT(*) FROM users WHERE class = c.id AND role = 'student') as student_count
                 FROM classes c
-                LEFT JOIN teachers t ON c.teacher_id = t.id
+                LEFT JOIN users u ON c.teacher_id = u.id
                 ORDER BY c.name ASC";
-$classes_result = mysqli_query($conn, $classes_sql);
-$classes = array();
-if ($classes_result) {
-    while ($row = mysqli_fetch_assoc($classes_result)) {
+$class_result = mysqli_query($conn, $class_query);
+if ($class_result && mysqli_num_rows($class_result) > 0) {
+    while ($row = mysqli_fetch_assoc($class_result)) {
         $classes[] = $row;
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User & Class Management</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>

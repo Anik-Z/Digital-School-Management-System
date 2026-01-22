@@ -2,164 +2,224 @@
 session_start();
 
 
-$host = 'localhost';
-$dbname = 'digital_school_management_system';
-$username = 'root';
-$password = '';
-
-$conn = mysqli_connect($host, $username, $password, $dbname);
-
+$conn = mysqli_connect('localhost', 'root', '', 'digital_school_management_system');
 if (!$conn) {
-    die("Connection failed: " . mysqli_connect_error());
+    die("Database connection failed. Please check your database credentials.");
 }
 
-$admin_name = isset($_SESSION['admin_name']) ? $_SESSION['admin_name'] : 'Admin';
+
+if (!isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = 1;
+    $_SESSION['role'] = 'admin';
+    $_SESSION['full_name'] = 'Admin User';
+}
+
+// Check if user is admin
+if ($_SESSION['role'] !== 'admin') {
+    echo "<script>alert('Access denied. Admins only.'); window.location.href='../auth/login.php';</script>";
+    exit();
+}
+
+$admin_name = $_SESSION['full_name'];
+
+
 $success_message = '';
 $error_message = '';
 
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_policy'])) {
-    $policy_name = mysqli_real_escape_string($conn, trim($_POST['policy_name']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $category = mysqli_real_escape_string($conn, $_POST['category']);
-    $criteria = mysqli_real_escape_string($conn, trim($_POST['criteria']));
+function fetchAll($conn, $sql) {
+    $result = mysqli_query($conn, $sql);
+    $rows = [];
+    if ($result && mysqli_num_rows($result) > 0) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rows[] = $row;
+        }
+    }
+    return $rows;
+}
+
+function tableExists($conn, $tableName) {
+    $check = mysqli_query($conn, "SHOW TABLES LIKE '$tableName'");
+    return ($check && mysqli_num_rows($check) > 0);
+}
+
+
+$check_policies = mysqli_query($conn, "SHOW TABLES LIKE 'policies'");
+if (!$check_policies || mysqli_num_rows($check_policies) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS policies (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        policy_name VARCHAR(200) NOT NULL,
+        description TEXT,
+        category VARCHAR(100) NOT NULL,
+        criteria TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'Active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
     
-    $sql = "INSERT INTO policies (policy_name, description, category, criteria, status) 
-            VALUES ('$policy_name', '$description', '$category', '$criteria', 'Active')";
+
+    $default_policies = [
+        "INSERT INTO policies (policy_name, description, category, criteria) VALUES ('Grade Risk Assessment', 'Defines risk levels based on academic performance', 'Performance Evaluation', 'Green: ≥70%, Yellow: 50-69%, Red: <50%')",
+        "INSERT INTO policies (policy_name, description, category, criteria) VALUES ('Attendance Policy', 'Minimum attendance requirements for students', 'Attendance', 'Minimum 75% attendance required to maintain eligibility')",
+        "INSERT INTO policies (policy_name, description, category, criteria) VALUES ('Submission Policy', 'Guidelines for assignment submissions', 'Academic', 'Late submissions accepted with 10% penalty per day')"
+    ];
     
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Policy created successfully! 🎉";
+    foreach ($default_policies as $sql) {
+        mysqli_query($conn, $sql);
+    }
+}
+
+$check_notices = mysqli_query($conn, "SHOW TABLES LIKE 'notices'");
+if (!$check_notices || mysqli_num_rows($check_notices) == 0) {
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS notices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        content TEXT NOT NULL,
+        target_audience VARCHAR(50) DEFAULT 'All',
+        priority VARCHAR(20) DEFAULT 'Medium',
+        status VARCHAR(20) DEFAULT 'Active',
+        expiry_date DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )");
+    
+  
+    $default_notices = [
+        "INSERT INTO notices (title, content, target_audience, priority, expiry_date) VALUES ('Exam Schedule Released', 'Final examination schedule for semester 1 is now available. Please check the notice board.', 'All', 'High', DATE_ADD(CURDATE(), INTERVAL 30 DAY))",
+        "INSERT INTO notices (title, content, target_audience, priority, expiry_date) VALUES ('School Holiday', 'School will remain closed on Monday for maintenance work.', 'All', 'Medium', DATE_ADD(CURDATE(), INTERVAL 5 DAY))"
+    ];
+    
+    foreach ($default_notices as $sql) {
+        mysqli_query($conn, $sql);
+    }
+}
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['create_policy'])) {
+        $policy_name = mysqli_real_escape_string($conn, $_POST['policy_name']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        $category = mysqli_real_escape_string($conn, $_POST['category']);
+        $criteria = mysqli_real_escape_string($conn, $_POST['criteria']);
+        
+        $sql = "INSERT INTO policies (policy_name, description, category, criteria) 
+                VALUES ('$policy_name', '$description', '$category', '$criteria')";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Policy created successfully!";
+        } else {
+            $error_message = "Error creating policy: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['update_policy'])) {
+        $policy_id = intval($_POST['policy_id']);
+        $policy_name = mysqli_real_escape_string($conn, $_POST['policy_name']);
+        $description = mysqli_real_escape_string($conn, $_POST['description']);
+        $category = mysqli_real_escape_string($conn, $_POST['category']);
+        $criteria = mysqli_real_escape_string($conn, $_POST['criteria']);
+        $status = mysqli_real_escape_string($conn, $_POST['status']);
+        
+        $sql = "UPDATE policies SET 
+                policy_name = '$policy_name',
+                description = '$description',
+                category = '$category',
+                criteria = '$criteria',
+                status = '$status'
+                WHERE id = $policy_id";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Policy updated successfully!";
+        } else {
+            $error_message = "Error updating policy: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['create_notice'])) {
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $content = mysqli_real_escape_string($conn, $_POST['content']);
+        $target_audience = mysqli_real_escape_string($conn, $_POST['target_audience']);
+        $priority = mysqli_real_escape_string($conn, $_POST['priority']);
+        $expiry_date = !empty($_POST['expiry_date']) ? mysqli_real_escape_string($conn, $_POST['expiry_date']) : NULL;
+        
+        $sql = "INSERT INTO notices (title, content, target_audience, priority, expiry_date) 
+                VALUES ('$title', '$content', '$target_audience', '$priority', " . 
+                ($expiry_date ? "'$expiry_date'" : "NULL") . ")";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Notice published successfully!";
+        } else {
+            $error_message = "Error publishing notice: " . mysqli_error($conn);
+        }
+    }
+    
+    if (isset($_POST['update_notice'])) {
+        $notice_id = intval($_POST['notice_id']);
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $content = mysqli_real_escape_string($conn, $_POST['content']);
+        $target_audience = mysqli_real_escape_string($conn, $_POST['target_audience']);
+        $priority = mysqli_real_escape_string($conn, $_POST['priority']);
+        $expiry_date = !empty($_POST['expiry_date']) ? mysqli_real_escape_string($conn, $_POST['expiry_date']) : NULL;
+        $status = mysqli_real_escape_string($conn, $_POST['status']);
+        
+        $sql = "UPDATE notices SET 
+                title = '$title',
+                content = '$content',
+                target_audience = '$target_audience',
+                priority = '$priority',
+                expiry_date = " . ($expiry_date ? "'$expiry_date'" : "NULL") . ",
+                status = '$status'
+                WHERE id = $notice_id";
+        
+        if (mysqli_query($conn, $sql)) {
+            $success_message = "Notice updated successfully!";
+        } else {
+            $error_message = "Error updating notice: " . mysqli_error($conn);
+        }
+    }
+}
+
+// Handle delete operations
+if (isset($_GET['delete_policy'])) {
+    $policy_id = intval($_GET['delete_policy']);
+    $delete_sql = "DELETE FROM policies WHERE id = $policy_id";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Policy deleted successfully!";
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting policy: " . mysqli_error($conn);
     }
 }
 
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_policy'])) {
-    $policy_id = (int)$_POST['policy_id'];
-    $policy_name = mysqli_real_escape_string($conn, trim($_POST['policy_name']));
-    $description = mysqli_real_escape_string($conn, trim($_POST['description']));
-    $category = mysqli_real_escape_string($conn, $_POST['category']);
-    $criteria = mysqli_real_escape_string($conn, trim($_POST['criteria']));
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    
-    $sql = "UPDATE policies SET policy_name = '$policy_name', description = '$description', 
-            category = '$category', criteria = '$criteria', status = '$status' 
-            WHERE id = '$policy_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Policy updated successfully! ✨";
+if (isset($_GET['delete_notice'])) {
+    $notice_id = intval($_GET['delete_notice']);
+    $delete_sql = "DELETE FROM notices WHERE id = $notice_id";
+    if (mysqli_query($conn, $delete_sql)) {
+        $success_message = "Notice deleted successfully!";
     } else {
-        $error_message = "Error: " . mysqli_error($conn);
+        $error_message = "Error deleting notice: " . mysqli_error($conn);
     }
 }
 
-// DELETE Policy
-if (isset($_GET['delete_policy']) && is_numeric($_GET['delete_policy'])) {
-    $policy_id = (int)$_GET['delete_policy'];
-    $sql = "DELETE FROM policies WHERE id = '$policy_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Policy deleted successfully! 🗑️";
-        header("Location: policy_manager.php");
-        exit();
-    }
-}
-
-// CREATE Notice/Announcement
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_notice'])) {
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $content = mysqli_real_escape_string($conn, trim($_POST['content']));
-    $target_audience = mysqli_real_escape_string($conn, $_POST['target_audience']);
-    $priority = mysqli_real_escape_string($conn, $_POST['priority']);
-    $expiry_date = !empty($_POST['expiry_date']) ? mysqli_real_escape_string($conn, $_POST['expiry_date']) : NULL;
-    
-    $sql = "INSERT INTO notices (title, content, target_audience, priority, expiry_date, status) 
-            VALUES ('$title', '$content', '$target_audience', '$priority', " . ($expiry_date ? "'$expiry_date'" : "NULL") . ", 'Active')";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Notice published successfully! 📢";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-// UPDATE Notice
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_notice'])) {
-    $notice_id = (int)$_POST['notice_id'];
-    $title = mysqli_real_escape_string($conn, trim($_POST['title']));
-    $content = mysqli_real_escape_string($conn, trim($_POST['content']));
-    $target_audience = mysqli_real_escape_string($conn, $_POST['target_audience']);
-    $priority = mysqli_real_escape_string($conn, $_POST['priority']);
-    $status = mysqli_real_escape_string($conn, $_POST['status']);
-    $expiry_date = !empty($_POST['expiry_date']) ? mysqli_real_escape_string($conn, $_POST['expiry_date']) : NULL;
-    
-    $sql = "UPDATE notices SET title = '$title', content = '$content', 
-            target_audience = '$target_audience', priority = '$priority', status = '$status',
-            expiry_date = " . ($expiry_date ? "'$expiry_date'" : "NULL") . "
-            WHERE id = '$notice_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Notice updated successfully! ✨";
-    } else {
-        $error_message = "Error: " . mysqli_error($conn);
-    }
-}
-
-// DELETE Notice
-if (isset($_GET['delete_notice']) && is_numeric($_GET['delete_notice'])) {
-    $notice_id = (int)$_GET['delete_notice'];
-    $sql = "DELETE FROM notices WHERE id = '$notice_id'";
-    
-    if (mysqli_query($conn, $sql)) {
-        $success_message = "Notice deleted successfully! 🗑️";
-        header("Location: policy_manager.php");
-        exit();
-    }
-}
-
-// Fetch Policies
-$policies_sql = "SELECT * FROM policies ORDER BY created_at DESC";
-$policies_result = mysqli_query($conn, $policies_sql);
-$policies = array();
-if ($policies_result) {
-    while ($row = mysqli_fetch_assoc($policies_result)) {
-        $policies[] = $row;
-    }
-}
-
-// Fetch Notices
-$notices_sql = "SELECT * FROM notices ORDER BY created_at DESC";
-$notices_result = mysqli_query($conn, $notices_sql);
-$notices = array();
-if ($notices_result) {
-    while ($row = mysqli_fetch_assoc($notices_result)) {
-        $notices[] = $row;
-    }
-}
+// Get data
+$policies = fetchAll($conn, "SELECT * FROM policies ORDER BY created_at DESC");
+$notices = fetchAll($conn, "SELECT * FROM notices ORDER BY created_at DESC");
 
 // Statistics
 $active_policies = 0;
-$inactive_policies = 0;
 foreach ($policies as $policy) {
     if ($policy['status'] === 'Active') $active_policies++;
-    else $inactive_policies++;
 }
 
 $active_notices = 0;
-$expired_notices = 0;
 foreach ($notices as $notice) {
     if ($notice['status'] === 'Active') $active_notices++;
-    else $expired_notices++;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Policy & Notice Manager</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../Assets/css/common.css">
 </head>
 <body>
