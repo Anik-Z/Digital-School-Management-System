@@ -3,7 +3,7 @@ session_start();
 
 
 $host = 'localhost';
-$dbname = 'student_db';
+$dbname = 'digital_school_management_system';
 $username = 'root';
 $password = '';
 

@@ -29,7 +29,7 @@ $courses_data = [];
 $progress_data = [];
 $activities_data = [];
 
-// 1. Get student info from users table
+
 $sqlStudent = "SELECT id, full_name, email, class, roll_number, 
                COALESCE(risk_status, 'Green') as risk_status 
                FROM users 
